@@ -102,18 +102,23 @@
                         @endif
 
                         {{-- TICKETS (ACCESIBLE PARA TODOS) --}}
+                        @php
+                            $ticketBadgeCount = 0;
+                            try {
+                                if (auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->email === 'admin@emporio.com')) {
+                                    $ticketBadgeCount = \Illuminate\Support\Facades\DB::table('tickets')->where('status', 'Abierto')->count();
+                                }
+                            } catch (\Exception $e) {
+                                $ticketBadgeCount = 0;
+                            }
+                        @endphp
                         <div class="relative group">
                             <a href="{{ route('tickets.index') }}" class="flex items-center gap-1 nav-link py-4 {{ request()->routeIs('tickets.*') ? 'text-blue-400' : 'hover:text-blue-400' }} transition">
                                 Tickets
-                                @if(auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->email === 'admin@emporio.com'))
-                                    @php 
-                                        $ticketBadgeCount = \App\Models\Ticket::where('status', 'Abierto')->count(); 
-                                    @endphp
-                                    @if($ticketBadgeCount > 0)
-                                        <span class="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold">
-                                            {{ $ticketBadgeCount }}
-                                        </span>
-                                    @endif
+                                @if($ticketBadgeCount > 0)
+                                    <span class="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold">
+                                        {{ $ticketBadgeCount }}
+                                    </span>
                                 @endif
                                 <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </a>

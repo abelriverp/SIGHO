@@ -18,19 +18,34 @@ class Ticket extends Model
         'prioridad',
         'status',
         'archivo_path',
+        'fotos_resolucion',
         'notas_admin',
-        'fecha_resolucion'
+        'fecha_resolucion',
+        'confirmado_usuario',
+        'fecha_confirmacion',
+        'motivo_reapertura',
+        'token_resolucion',
+        'token_confirmacion',
+        'ip_resolucion',
+        'ip_confirmacion',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'fecha_resolucion' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'fotos_resolucion'   => 'array',
+        'confirmado_usuario' => 'boolean',
+        'fecha_confirmacion' => 'datetime',
+        'fecha_resolucion'   => 'datetime',
+    ];
 
+    // Relación con el usuario que creó el ticket
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    // Relación con las notas de la bitácora
+    public function notas()
+    {
+        return $this->hasMany(TicketNota::class);
     }
 }

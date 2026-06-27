@@ -73,8 +73,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/crear', [TicketController::class, 'create'])->name('create');
         Route::post('/', [TicketController::class, 'store'])->name('store');
         Route::get('/{id}', [TicketController::class, 'show'])->name('show');
-        Route::put('/{id}/resolver', [TicketController::class, 'resolve'])->name('resolve');
+        Route::match(['PUT', 'PATCH'], '/{id}/resolver', [TicketController::class, 'resolve'])->name('resolve');
         Route::get('/{id}/descargar', [TicketController::class, 'downloadPDF'])->name('download');
+        Route::post('/{id}/confirmar', [TicketController::class, 'confirmar'])->name('confirmar');
+        Route::post('/{id}/reabrir', [TicketController::class, 'reabrir'])->name('reabrir');
+        Route::post('/{id}/notas', [TicketController::class, 'agregarNota'])->name('notas.store');
+        // v1.1 — Editar nota (ventana 15 min, solo autor)
+        Route::patch('/{ticket}/notas/{nota}/edit', [TicketController::class, 'editarNota'])->name('notas.edit');
     });
 
     // Módulo de Administración (Solo administradores)

@@ -2,6 +2,8 @@
 
 @section('content')
 <div class="max-w-4xl mx-auto mt-8">
+
+    {{-- Barra superior --}}
     <div class="flex justify-between items-center mb-4 no-print">
         <a href="{{ route('tickets.index') }}" class="text-sm text-slate-500 hover:text-[#041b32] flex items-center gap-1">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -9,31 +11,76 @@
             </svg>
             Volver al listado
         </a>
-
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
             <button onclick="window.print()" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                 Imprimir
             </button>
-            
-            <a href="{{ route('tickets.download', $ticket->id) }}" class="bg-[#041b32] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                Descargar PDF
-            </a>
+
+            {{-- Botón PDF con opción de bitácora (solo técnico/admin) --}}
+            @if(auth()->user()->puedeResponderTickets())
+                <div class="relative" id="pdf-dropdown-wrap">
+                    <button onclick="togglePdfMenu()"
+                        class="bg-[#041b32] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Descargar PDF
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="pdf-menu" class="hidden absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-10 p-3">
+                        <p class="text-[10px] text-slate-500 font-bold uppercase mb-2">Opciones de PDF</p>
+                        <a href="{{ route('tickets.download', $ticket->id) }}"
+                            class="block text-sm text-slate-700 hover:text-[#041b32] py-1.5 border-b border-slate-100">
+                            📄 Sin bitácora
+                        </a>
+                        <a href="{{ route('tickets.download', $ticket->id) }}?bitacora=1"
+                            class="block text-sm text-slate-700 hover:text-[#041b32] py-1.5 mt-1">
+                            📋 Con bitácora completa
+                        </a>
+                    </div>
+                </div>
+            @else
+                <a href="{{ route('tickets.download', $ticket->id) }}" class="bg-[#041b32] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Descargar PDF
+                </a>
+            @endif
         </div>
     </div>
 
+    {{-- Mensajes de sesión --}}
+    @if(session('success'))
+        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded mb-4 text-sm no-print">{{ session('success') }}</div>
+    @endif
+    @if(session('warning'))
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 px-4 py-3 rounded mb-4 text-sm no-print">{{ session('warning') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4 text-sm no-print">{{ session('error') }}</div>
+    @endif
+
     <div class="bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden printable-area">
+
+        {{-- Encabezado con número y status --}}
         <div class="bg-[#041b32] px-6 py-4 flex justify-between items-center header-print">
             <div>
                 <p class="text-blue-200 text-[11px] font-bold uppercase tracking-wider">Número de seguimiento</p>
                 <h3 class="text-white font-bold text-2xl">#{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</h3>
             </div>
-            <span class="px-3 py-1 rounded-full text-xs font-bold {{ $ticket->status === 'Abierto' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700' }}">
+            @php
+                $statusColor = match($ticket->status) {
+                    'Abierto'   => 'bg-yellow-100 text-yellow-700',
+                    'Resuelto'  => 'bg-blue-100 text-blue-700',
+                    'Reabierto' => 'bg-orange-100 text-orange-700',
+                    'Cerrado'   => 'bg-green-100 text-green-700',
+                    default     => 'bg-slate-100 text-slate-700',
+                };
+            @endphp
+            <span class="px-3 py-1 rounded-full text-xs font-bold {{ $statusColor }}">
                 {{ strtoupper($ticket->status) }}
             </span>
         </div>
 
+        {{-- Datos del ticket --}}
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div class="space-y-4">
                 <div>
@@ -51,8 +98,12 @@
                 </div>
                 @endif
                 <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dirigido a</h4>
+                    <p class="text-slate-800 font-medium">{{ $ticket->departamento_destino }}</p>
+                </div>
+                <div>
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Prioridad</h4>
-                    <p class="font-bold {{ $ticket->prioridad == 'Alta' ? 'text-red-600' : 'text-slate-700' }}">
+                    <p class="font-bold {{ $ticket->prioridad == 'Alta' ? 'text-red-600' : ($ticket->prioridad == 'Media' ? 'text-yellow-600' : 'text-green-600') }}">
                         {{ $ticket->prioridad }}
                     </p>
                 </div>
@@ -63,87 +114,401 @@
                     </p>
                 </div>
 
-                @if($ticket->status === 'Resuelto')
-                <div class="pt-4 border-t border-slate-100 solution-print">
-                    <h4 class="text-xs font-bold text-green-600 uppercase tracking-wider">Solución de TI</h4>
+                @if(in_array($ticket->status, ['Resuelto', 'Cerrado']))
+                <div class="pt-4 border-t border-slate-100">
+                    <h4 class="text-xs font-bold text-green-600 uppercase tracking-wider">Solución aplicada por TI</h4>
                     <p class="text-slate-700 mt-1">{{ $ticket->notas_admin }}</p>
-                    <p class="text-[10px] text-slate-400 mt-2 italic">Resuelto el: {{ $ticket->fecha_resolucion }}</p>
+                    <p class="text-[10px] text-slate-400 mt-2 italic">Resuelto el: {{ $ticket->fecha_resolucion?->format('d/m/Y H:i') }}</p>
+                </div>
+                @endif
+
+                @if($ticket->status === 'Reabierto' && $ticket->motivo_reapertura)
+                <div class="pt-4 border-t border-orange-100">
+                    <h4 class="text-xs font-bold text-orange-600 uppercase tracking-wider">Motivo de reapertura</h4>
+                    <p class="text-slate-700 mt-1">{{ $ticket->motivo_reapertura }}</p>
+                </div>
+                @endif
+
+                @if($ticket->status === 'Cerrado' && $ticket->confirmado_usuario)
+                <div class="pt-4 border-t border-green-100">
+                    <h4 class="text-xs font-bold text-green-600 uppercase tracking-wider">Confirmación del usuario</h4>
+                    <p class="text-slate-700 mt-1 text-sm">✅ Problema confirmado como solucionado por {{ $ticket->user->name }}</p>
+                    <p class="text-[10px] text-slate-400 mt-1 italic">{{ $ticket->fecha_confirmacion?->format('d/m/Y H:i') }}</p>
+                </div>
+                @endif
+
+                {{-- ============================================ --}}
+                {{-- TOKENS DE AUDITORÍA (visible en show)       --}}
+                {{-- ============================================ --}}
+                @if($ticket->token_resolucion)
+                <div class="pt-4 border-t border-slate-100">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tokens de Auditoría</h4>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-2 flex items-start gap-2">
+                        <span class="text-blue-400 mt-0.5">🔐</span>
+                        <div>
+                            <p class="text-[10px] text-blue-500 font-bold uppercase tracking-wide">Token de Resolución</p>
+                            <p class="font-mono text-xs font-bold text-[#041b32]">{{ $ticket->token_resolucion }}</p>
+                            <p class="text-[9px] text-slate-400">IP: {{ $ticket->ip_resolucion ?? '—' }}</p>
+                        </div>
+                    </div>
+                    @if($ticket->token_confirmacion)
+                    <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                        <span class="text-green-500 mt-0.5">✅</span>
+                        <div>
+                            <p class="text-[10px] text-green-600 font-bold uppercase tracking-wide">Token de Confirmación</p>
+                            <p class="font-mono text-xs font-bold text-[#041b32]">{{ $ticket->token_confirmacion }}</p>
+                            <p class="text-[9px] text-slate-400">IP: {{ $ticket->ip_confirmacion ?? '—' }}</p>
+                        </div>
+                    </div>
+                    @endif
                 </div>
                 @endif
             </div>
 
-            <div class="no-print-evidence">
-                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Evidencia Adjunta</h4>
-                @if($ticket->archivo_path)
-                    <div class="rounded-lg border border-slate-200 overflow-hidden shadow-sm">
-                        @php $extension = pathinfo($ticket->archivo_path, PATHINFO_EXTENSION); @endphp
-                        @if(in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'webp']))
-                            <img src="{{ asset('storage/' . $ticket->archivo_path) }}" class="w-full h-auto" alt="Evidencia">
-                        @elseif(in_array(strtolower($extension), ['mp4', 'mov', 'avi']))
-                            <video controls class="w-full h-auto">
-                                <source src="{{ asset('storage/' . $ticket->archivo_path) }}">
-                                Tu navegador no soporta video.
-                            </video>
-                        @endif
+            {{-- ============================================ --}}
+            {{-- COLUMNA DERECHA: EVIDENCIA ORIGINAL + FOTOS --}}
+            {{-- ============================================ --}}
+            <div class="space-y-4 no-print-evidence">
+
+                {{-- Evidencia original al crear el ticket --}}
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Evidencia Adjunta</h4>
+                    @if($ticket->archivo_path)
+                        <div class="rounded-lg border border-slate-200 overflow-hidden shadow-sm">
+                            @php $extension = pathinfo($ticket->archivo_path, PATHINFO_EXTENSION); @endphp
+                            @if(in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'webp']))
+                                <img src="{{ Storage::url($ticket->archivo_path) }}"
+                                     alt="Evidencia"
+                                     class="w-full h-auto object-cover max-h-64 cursor-pointer"
+                                     onclick="document.getElementById('modal-img').src=this.src; document.getElementById('img-modal').classList.remove('hidden')">
+                                <p class="text-[10px] text-center text-slate-400 py-1">Clic para ampliar</p>
+                            @elseif(in_array(strtolower($extension), ['mp4', 'mov']))
+                                <video controls class="w-full max-h-64">
+                                    <source src="{{ Storage::url($ticket->archivo_path) }}" type="video/{{ $extension }}">
+                                </video>
+                            @endif
+                        </div>
+                    @else
+                        <div class="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
+                            <p class="text-xs text-slate-400">Sin evidencia adjunta al crear</p>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- ============================================ --}}
+                {{-- FOTOS DE RESOLUCIÓN (ya guardadas)          --}}
+                {{-- ============================================ --}}
+                @if($ticket->fotos_resolucion && count($ticket->fotos_resolucion) > 0)
+                <div class="pt-4 border-t border-slate-100">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">
+                        Fotografías de Resolución
+                        <span class="text-slate-300 font-normal">({{ count($ticket->fotos_resolucion) }}/4)</span>
+                    </h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        @foreach($ticket->fotos_resolucion as $foto)
+                        <div class="relative border border-slate-200 rounded-lg overflow-hidden bg-slate-50 aspect-video cursor-pointer hover:opacity-90 transition"
+                             onclick="document.getElementById('modal-img').src='{{ asset('storage/' . $foto) }}'; document.getElementById('img-modal').classList.remove('hidden')">
+                            <img src="{{ asset('storage/' . $foto) }}"
+                                 class="w-full h-full object-cover"
+                                 alt="Foto resolución {{ $loop->iteration }}">
+                            <span class="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">
+                                {{ $loop->iteration }}/{{ count($ticket->fotos_resolucion) }}
+                            </span>
+                        </div>
+                        @endforeach
                     </div>
-                @else
-                    <div class="flex flex-col items-center justify-center h-48 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 text-slate-400">
-                        <p class="text-xs">Sin evidencia adjunta</p>
-                    </div>
+                    <p class="text-[10px] text-center text-slate-400 mt-1">Clic en cada foto para ampliar</p>
+                </div>
                 @endif
+
             </div>
         </div>
 
-        @if($ticket->status === 'Abierto' && auth()->user()->puedeResponderTickets())
-            <div class="bg-slate-50 px-6 py-6 border-t border-slate-200 no-print">
-                <form action="{{ route('tickets.resolve', $ticket->id) }}" method="POST">
-                    @csrf 
-                    @method('PUT')
-                    <label class="block text-sm font-bold text-slate-700 mb-2">Notas de Resolución:</label>
-                    <textarea name="notas_admin" required class="w-full border-slate-300 rounded-lg mb-4 text-sm p-3" rows="3" placeholder="¿Cómo lo solucionaste?"></textarea>
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded shadow transition">
-                        Marcar como Resuelto
+        {{-- Modal imagen (evidencia y fotos resolución) --}}
+        <div id="img-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center no-print"
+             onclick="this.classList.add('hidden')">
+            <img id="modal-img" src="" alt="Evidencia ampliada" class="max-w-[90vw] max-h-[90vh] rounded shadow-2xl">
+        </div>
+
+        {{-- ============================================ --}}
+        {{-- BLOQUE RESOLVER (técnico/admin)              --}}
+        {{-- ============================================ --}}
+        @if(in_array($ticket->status, ['Abierto', 'Reabierto']) && auth()->user()->puedeResponderTickets() && auth()->id() !== $ticket->user_id)
+            <div class="px-6 py-6 border-t border-slate-200 bg-slate-50 no-print"
+                 x-data="fotoPreview()">
+                <h4 class="text-sm font-bold text-slate-700 mb-4">Registrar solución y cerrar ticket</h4>
+                <form action="{{ route('tickets.resolve', $ticket->id) }}"
+                      method="POST"
+                      enctype="multipart/form-data">
+                    @csrf
+                    @method('PATCH')
+
+                    {{-- Notas de resolución --}}
+                    <textarea name="notas_admin" required rows="3"
+                        class="w-full border border-slate-300 rounded-lg mb-4 text-sm p-3 focus:outline-none focus:border-[#041b32]"
+                        placeholder="Describe detalladamente cómo se solucionó el problema..."></textarea>
+
+                    {{-- Upload fotos de resolución --}}
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">
+                            Fotografías de evidencia de resolución
+                            <span class="text-slate-400 font-normal">(máx. 4 — JPG, PNG, WEBP — 4 MB c/u)</span>
+                        </label>
+                        <input type="file"
+                               name="fotos_resolucion[]"
+                               accept="image/jpeg,image/jpg,image/png,image/webp"
+                               multiple
+                               @change="previsualizar($event)"
+                               class="block w-full text-xs text-slate-600
+                                      file:mr-3 file:py-1.5 file:px-4 file:rounded
+                                      file:border-0 file:text-xs file:font-semibold
+                                      file:bg-[#041b32] file:text-white hover:file:opacity-90
+                                      cursor-pointer border border-slate-200 rounded-lg p-1">
+
+                        {{-- Previews en grid 2x2 --}}
+                        <div class="grid grid-cols-2 gap-2 mt-3" x-show="previews.length > 0" x-cloak>
+                            <template x-for="(src, i) in previews" :key="i">
+                                <div class="relative border border-slate-200 rounded-lg overflow-hidden bg-slate-100 aspect-video">
+                                    <img :src="src" class="w-full h-full object-cover">
+                                    <span class="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded"
+                                          x-text="'Foto ' + (i + 1)"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <p class="text-[10px] text-slate-400 mb-3 italic">
+                        🔐 Al guardar se generará automáticamente un token de resolución para auditoría.
+                    </p>
+
+                    <button type="submit"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded shadow transition">
+                        ✅ Marcar como Resuelto
                     </button>
                 </form>
             </div>
         @endif
+
+        {{-- ============================================ --}}
+        {{-- BLOQUE: CONFIRMACIÓN DEL USUARIO             --}}
+        {{-- ============================================ --}}
+        @if($ticket->status === 'Resuelto' && auth()->id() === $ticket->user_id)
+            <div class="px-6 py-6 border-t border-blue-100 bg-blue-50 no-print">
+                <h4 class="text-sm font-bold text-blue-800 mb-1">¿Tu problema fue solucionado?</h4>
+                <p class="text-xs text-blue-600 mb-4">El equipo de TI ha registrado una solución. Por favor confirma si el problema fue resuelto satisfactoriamente.</p>
+
+                <form action="{{ route('tickets.confirmar', $ticket->id) }}" method="POST" class="mb-3">
+                    @csrf
+                    <button type="submit"
+                        onclick="return confirm('¿Confirmas que el problema fue solucionado? Al confirmar, el ticket será cerrado definitivamente.')"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">
+                        ✅ Sí, confirmo que el problema fue solucionado
+                    </button>
+                </form>
+
+                <div class="bg-white border border-blue-200 rounded-lg p-3 mb-4 text-[11px] text-slate-500 italic">
+                    Al confirmar, declaro bajo mi responsabilidad que el problema reportado ha sido solucionado satisfactoriamente. Las credenciales de acceso utilizadas en este sistema son personales, únicas e intransferibles, por lo que esta confirmación se realiza bajo mi identidad como <strong>{{ auth()->user()->name }}</strong>.
+                </div>
+
+                <details class="mt-2">
+                    <summary class="text-xs text-red-600 font-bold cursor-pointer hover:text-red-800">❌ El problema NO fue resuelto — Reabrir ticket</summary>
+                    <form action="{{ route('tickets.reabrir', $ticket->id) }}" method="POST" class="mt-3">
+                        @csrf
+                        <textarea name="motivo_reapertura" required rows="3" minlength="10"
+                            class="w-full border border-red-200 rounded-lg text-sm p-3 mb-2 focus:outline-none focus:border-red-400"
+                            placeholder="Explica por qué el problema no quedó resuelto..."></textarea>
+                        <button type="submit"
+                            class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded shadow transition text-sm">
+                            Reabrir Ticket
+                        </button>
+                    </form>
+                </details>
+            </div>
+        @endif
+
+        {{-- ============================================ --}}
+        {{-- BLOQUE: BITÁCORA DE NOTAS                   --}}
+        {{-- ============================================ --}}
+        <div class="px-6 py-6 border-t border-slate-200 no-print">
+            <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                Bitácora de Seguimiento
+            </h4>
+
+            {{-- Lista de notas --}}
+            <div class="space-y-3 mb-6">
+                @forelse($ticket->notas as $nota)
+                    @if($nota->esPublica() || auth()->user()->puedeResponderTickets())
+                        @php
+                            $esAutor      = auth()->id() === $nota->user_id;
+                            $minutosDesde = now()->diffInMinutes($nota->created_at);
+                            $puedeEditar  = $esAutor && $minutosDesde <= 15 && auth()->user()->puedeResponderTickets();
+                        @endphp
+                        <div class="flex gap-3" id="nota-{{ $nota->id }}">
+                            <div class="flex-shrink-0 w-2 rounded-full {{ $nota->esPublica() ? 'bg-green-400' : 'bg-slate-400' }}"></div>
+                            <div class="flex-1 {{ $nota->esInterna() ? 'bg-slate-50 border border-slate-200' : 'bg-green-50 border border-green-100' }} rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="text-xs font-bold text-slate-700">{{ $nota->user->name }}</span>
+                                        @if($nota->esInterna())
+                                            <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold">🔒 Interna</span>
+                                        @else
+                                            <span class="text-[9px] bg-green-200 text-green-700 px-1.5 py-0.5 rounded uppercase font-bold">🌐 Pública</span>
+                                        @endif
+                                        @if($nota->editado_at)
+                                            <span class="text-[9px] text-slate-400 italic">✏️ Editada {{ $nota->editado_at->format('d/m H:i') }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] text-slate-400">{{ $nota->created_at->format('d/m/Y H:i') }}</span>
+                                        @if($puedeEditar)
+                                            <button onclick="toggleEditNota({{ $nota->id }})"
+                                                class="text-[10px] text-blue-500 hover:text-blue-700 font-bold border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-50 transition">
+                                                ✏️ Editar
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                {{-- Texto de la nota --}}
+                                <p class="text-sm text-slate-700" id="texto-nota-{{ $nota->id }}">{{ $nota->nota }}</p>
+
+                                {{-- Formulario de edición (oculto por defecto) --}}
+                                @if($puedeEditar)
+                                    <form action="{{ route('tickets.notas.edit', [$ticket->id, $nota->id]) }}"
+                                          method="POST"
+                                          id="form-nota-{{ $nota->id }}"
+                                          class="hidden mt-2">
+                                        @csrf
+                                        @method('PATCH')
+                                        <textarea name="nota" rows="2"
+                                            class="w-full border border-blue-200 rounded text-sm p-2 mb-2 focus:outline-none focus:border-blue-400"
+                                            >{{ $nota->nota }}</textarea>
+                                        <div class="flex gap-2">
+                                            <button type="submit"
+                                                class="bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded hover:bg-blue-700 transition">
+                                                Guardar
+                                            </button>
+                                            <button type="button"
+                                                onclick="toggleEditNota({{ $nota->id }})"
+                                                class="bg-slate-200 text-slate-700 text-xs font-bold px-4 py-1.5 rounded hover:bg-slate-300 transition">
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                        @php $tiempoRestante = 15 - (int)$minutosDesde; @endphp
+                                        <p class="text-[9px] text-slate-400 mt-1 italic">
+                                            ⏱ Puedes editar por {{ $tiempoRestante }} minuto(s) más
+                                        </p>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+                @empty
+                    <p class="text-xs text-slate-400 italic text-center py-4">No hay notas de seguimiento aún.</p>
+                @endforelse
+            </div>
+
+            {{-- Formulario agregar nota (solo técnico/admin/gerente) --}}
+            @if(auth()->user()->puedeResponderTickets() || auth()->user()->isGerente())
+                <form action="{{ route('tickets.notas.store', $ticket->id) }}" method="POST" class="border-t border-slate-100 pt-4">
+                    @csrf
+                    <label class="block text-xs font-bold text-slate-600 mb-2">Agregar nota de seguimiento</label>
+                    <textarea name="nota" required rows="2"
+                        class="w-full border border-slate-300 rounded-lg text-sm p-3 mb-2 focus:outline-none focus:border-[#041b32]"
+                        placeholder="Escribe una nota de seguimiento..."></textarea>
+                    <div class="flex items-center gap-3">
+                        <select name="tipo" class="border border-slate-300 rounded-lg text-xs px-3 py-2 focus:outline-none focus:border-[#041b32]">
+                            <option value="publica">🌐 Pública (visible para el usuario)</option>
+                            <option value="interna">🔒 Interna (solo personal TI)</option>
+                        </select>
+                        <button type="submit" class="bg-[#041b32] text-white text-xs font-bold px-6 py-2 rounded-lg hover:opacity-90 transition">
+                            Agregar Nota
+                        </button>
+                    </div>
+                </form>
+            @endif
+        </div>
+
     </div>
 </div>
 
-<style>
-    @media print {
-        nav, .no-print, button, form, footer, .mb-4 {
-            display: none !important;
-        }
-        
-        body {
-            background: white !important;
-            margin: 0;
-            padding: 0;
-            color: black !important;
-        }
+{{-- ================================================================ --}}
+{{-- SECCIÓN DE IMPRESIÓN: FOTOS EN 4 CUADRANTES (solo en print)     --}}
+{{-- ================================================================ --}}
+@if($ticket->fotos_resolucion && count($ticket->fotos_resolucion) > 0)
+@php
+    $fotosImpresion = array_slice($ticket->fotos_resolucion, 0, 4);
+    while (count($fotosImpresion) < 4) $fotosImpresion[] = null;
+@endphp
+<div class="print-fotos-page">
+    <div class="print-fotos-header">
+        <span>EVIDENCIA FOTOGRÁFICA — Ticket #{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</span>
+        <span>{{ now()->format('d/m/Y H:i') }}</span>
+    </div>
 
+    <div class="print-fotos-grid">
+        @foreach($fotosImpresion as $idx => $foto)
+        <div class="print-foto-celda">
+            @if($foto)
+                <img src="{{ asset('storage/' . $foto) }}" alt="Foto {{ $idx + 1 }}">
+                <p class="print-foto-label">Foto {{ $idx + 1 }} de {{ count($ticket->fotos_resolucion) }}</p>
+            @else
+                <p class="print-foto-vacia">— Sin imagen —</p>
+            @endif
+        </div>
+        @endforeach
+    </div>
+
+    {{-- Tokens al pie de la página de fotos --}}
+    <div class="print-tokens">
+        <div class="print-token-col">
+            <p class="print-token-label">TOKEN DE RESOLUCIÓN</p>
+            <p class="print-token-valor">{{ $ticket->token_resolucion ?? 'N/A' }}</p>
+            <p class="print-token-meta">IP: {{ $ticket->ip_resolucion ?? '—' }}</p>
+        </div>
+        <div class="print-token-col">
+            <p class="print-token-label">TOKEN DE CONFIRMACIÓN</p>
+            <p class="print-token-valor">{{ $ticket->token_confirmacion ?? 'Pendiente de confirmación' }}</p>
+            <p class="print-token-meta">IP: {{ $ticket->ip_confirmacion ?? '—' }}</p>
+        </div>
+    </div>
+</div>
+@endif
+
+<style>
+    /* ============================================================ */
+    /* ESTILOS DE PANTALLA                                          */
+    /* ============================================================ */
+    [x-cloak] { display: none !important; }
+
+    .print-fotos-page { display: none; }
+
+    /* ============================================================ */
+    /* ESTILOS DE IMPRESIÓN                                         */
+    /* ============================================================ */
+    @media print {
+        /* Ocultar UI de navegación */
+        nav, .no-print, button, form, footer, .mb-4 { display: none !important; }
+        body { background: white !important; margin: 0; padding: 0; color: black !important; }
+
+        /* Tarjeta principal */
         .printable-area {
             box-shadow: none !important;
             border: 1px solid #ddd !important;
             width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
         }
-
         .header-print {
             background-color: #041b32 !important;
             color: white !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-
         .no-print-evidence {
             display: block !important;
             width: 100% !important;
             margin-top: 20px !important;
         }
-
         .no-print-evidence img {
             max-width: 400px !important;
             height: auto !important;
@@ -151,14 +516,153 @@
             display: block;
             margin: 0 auto;
         }
+        .grid { display: block !important; }
+        .space-y-4 { margin-bottom: 20px; }
 
-        .grid {
+        /* -------------------------------------------------------- */
+        /* PÁGINA DE FOTOS EN 4 CUADRANTES                         */
+        /* -------------------------------------------------------- */
+        .print-fotos-page {
             display: block !important;
+            page-break-before: always;
+            width: 100%;
+            height: 100vh;
+            padding: 16px;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
         }
-        
-        .space-y-4 {
-            margin-bottom: 20px;
+
+        .print-fotos-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #041b32;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #041b32;
+        }
+
+        /* Grid 2x2 que ocupa casi toda la hoja */
+        .print-fotos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+            height: calc(100vh - 140px);
+        }
+
+        .print-foto-celda {
+            border: 1px solid #d1d5db;
+            background: #f9fafb;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .print-foto-celda img {
+            max-width: 100%;
+            max-height: calc(100% - 20px);
+            object-fit: contain;
+            display: block;
+        }
+
+        .print-foto-label {
+            margin: 4px 0 0;
+            font-size: 8px;
+            color: #9ca3af;
+            text-align: center;
+        }
+
+        .print-foto-vacia {
+            color: #d1d5db;
+            font-size: 10px;
+            font-style: italic;
+        }
+
+        /* Tokens al pie */
+        .print-tokens {
+            display: flex;
+            border: 1px solid #e5e7eb;
+            background: #f0f4ff;
+            margin-top: 10px;
+            padding: 6px 12px;
+        }
+
+        .print-token-col {
+            flex: 1;
+            padding: 0 8px;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .print-token-col:last-child { border-right: none; }
+
+        .print-token-label {
+            margin: 0;
+            font-size: 8px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: bold;
+        }
+
+        .print-token-valor {
+            margin: 2px 0 0;
+            font-size: 11px;
+            font-family: monospace;
+            font-weight: bold;
+            color: #041b32;
+        }
+
+        .print-token-meta {
+            margin: 1px 0 0;
+            font-size: 8px;
+            color: #9ca3af;
         }
     }
 </style>
+
+<script>
+function fotoPreview() {
+    return {
+        previews: [],
+        previsualizar(event) {
+            const archivos = Array.from(event.target.files).slice(0, 4);
+            if (event.target.files.length > 4) {
+                alert('Máximo 4 fotografías permitidas. Solo se tomarán las primeras 4.');
+            }
+            this.previews = [];
+            archivos.forEach(f => {
+                const reader = new FileReader();
+                reader.onload = e => this.previews.push(e.target.result);
+                reader.readAsDataURL(f);
+            });
+        }
+    }
+}
+
+function toggleEditNota(notaId) {
+    const texto = document.getElementById('texto-nota-' + notaId);
+    const form  = document.getElementById('form-nota-' + notaId);
+    texto.classList.toggle('hidden');
+    form.classList.toggle('hidden');
+}
+
+function togglePdfMenu() {
+    document.getElementById('pdf-menu').classList.toggle('hidden');
+}
+
+document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('pdf-dropdown-wrap');
+    const menu = document.getElementById('pdf-menu');
+    if (wrap && menu && !wrap.contains(e.target)) {
+        menu.classList.add('hidden');
+    }
+});
+</script>
 @endsection
