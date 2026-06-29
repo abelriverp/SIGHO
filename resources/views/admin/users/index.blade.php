@@ -31,14 +31,31 @@
                             {{ strtoupper($user->role) }}
                         </span>
                     </td>
-                    <td class="py-4 px-6 text-right flex justify-end gap-3">
-                        <a href="{{ route('admin.users.edit', $user->id) }}" class="text-blue-500 hover:text-blue-700 font-bold text-sm">Editar</a>
-                        @if($user->email !== 'admin@emporio.com')
-                        <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('¿Eliminar usuario?');">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-red-500 hover:text-red-700 font-bold text-sm">Eliminar</button>
-                        </form>
-                        @endif
+                    <td class="py-4 px-6 text-right">
+                        <div class="flex justify-end items-center gap-3">
+
+                            {{-- Botón Módulos solo para no-admin --}}
+                            @if($user->role !== 'admin')
+                            <a href="{{ route('admin.users.modulos', $user->id) }}"
+                               class="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200">
+                                🧩 Módulos
+                                @php $count = $user->modulos()->count(); @endphp
+                                @if($count > 0)
+                                    <span class="ml-1 bg-indigo-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{{ $count }}</span>
+                                @endif
+                            </a>
+                            @endif
+
+                            <a href="{{ route('admin.users.edit', $user->id) }}" class="text-blue-500 hover:text-blue-700 font-bold text-sm">Editar</a>
+
+                            @if($user->email !== 'admin@emporio.com')
+                            <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('¿Eliminar usuario?');">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-red-500 hover:text-red-700 font-bold text-sm">Eliminar</button>
+                            </form>
+                            @endif
+
+                        </div>
                     </td>
                 </tr>
                 @endforeach

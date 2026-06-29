@@ -92,6 +92,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/usuarios/{user}/editar', [AdminSettingsController::class, 'usersEdit'])->name('users.edit');
         Route::put('/usuarios/{user}', [AdminSettingsController::class, 'usersUpdate'])->name('users.update');
         Route::delete('/usuarios/{user}', [AdminSettingsController::class, 'usersDestroy'])->name('users.destroy');
+        // ✅ Gestión de módulos por usuario
+        Route::get('/usuarios/{user}/modulos', [AdminSettingsController::class, 'usersModulos'])->name('users.modulos');
+        Route::post('/usuarios/{user}/modulos', [AdminSettingsController::class, 'usersModulosUpdate'])->name('users.modulos.update');
 
         // Rutas de Áreas
         Route::get('/areas', [AdminSettingsController::class, 'areasIndex'])->name('areas.index');

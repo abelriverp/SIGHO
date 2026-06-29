@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Modulo;
 
 class User extends Authenticatable
 {
@@ -56,6 +57,28 @@ class User extends Authenticatable
     {
         return $this->role === 'usuario';
     }
+
+	public function modulos()
+{
+    return $this->belongsToMany(Modulo::class, 'usuario_modulo')
+                ->withPivot('activado_en', 'activado_por')
+                ->withTimestamps();
+}
+
+	public function tieneModulo(string $clave): bool
+{
+    // Admin siempre tiene acceso
+    if ($this->isAdmin()) return true;
+
+    // Tickets es libre para todos
+    if ($clave === 'tickets') return true;
+
+    // Técnicos y gerentes tienen tickets automáticamente
+    if (in_array($this->role, ['tecnico', 'gerente']) && $clave === 'tickets') return true;
+
+    return $this->modulos->contains('clave', $clave);
+}
+
 
     // Puede ver y responder tickets (admin o técnico)
     public function puedeResponderTickets(): bool

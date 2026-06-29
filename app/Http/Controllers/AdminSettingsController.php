@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Area;
+use App\Models\Modulo;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -50,7 +51,6 @@ class AdminSettingsController extends Controller
             'password'     => 'nullable|string|min:6'
         ]);
         
-        // Si el rol ya no es técnico, limpiamos el departamento
         if ($data['role'] !== 'tecnico') {
             $data['departamento'] = null;
         }
@@ -71,6 +71,32 @@ class AdminSettingsController extends Controller
 
         $user->delete();
         return back()->with('success', 'Usuario eliminado correctamente.');
+    }
+
+    // ✅ NUEVO — Mostrar panel de módulos de un usuario
+    public function usersModulos(User $user) {
+        $todosLosModulos = Modulo::where('activo', true)->orderBy('orden')->get();
+        $modulosActivos  = $user->modulos()->pluck('modulo_id')->toArray();
+
+        return view('admin.users.modulos', compact('user', 'todosLosModulos', 'modulosActivos'));
+    }
+
+    // ✅ NUEVO — Guardar los módulos seleccionados
+    public function usersModulosUpdate(Request $request, User $user) {
+        $modulos = $request->input('modulos', []);
+
+        // sync reemplaza todo lo que había (quita los desmarcados, agrega los nuevos)
+        $user->modulos()->sync(
+            collect($modulos)->mapWithKeys(fn($id) => [
+                $id => [
+                    'activado_en'  => now(),
+                    'activado_por' => auth()->id(),
+                ]
+            ])->toArray()
+        );
+
+        return redirect()->route('admin.users.index')
+                         ->with('success', "Módulos de {$user->name} actualizados correctamente.");
     }
 
     // =====================================
