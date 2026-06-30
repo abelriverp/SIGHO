@@ -13,9 +13,7 @@
             @if($errors->any())
                 <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded">
                     <ul class="list-disc list-inside space-y-1">
-                        @foreach($errors->all() as $e)
-                            <li>{{ $e }}</li>
-                        @endforeach
+                        @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
                     </ul>
                 </div>
             @endif
@@ -26,12 +24,22 @@
                     <label class="block text-sm font-bold text-gray-700 mb-1">Nombre del Artículo <span class="text-red-500">*</span></label>
                     <input type="text" name="nombre" value="{{ old('nombre') }}"
                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100"
-                        placeholder="Ej: Crimpadora RJ45">
+                        placeholder="Ej: Papel higiénico industrial">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Cantidad <span class="text-red-500">*</span></label>
-                    <input type="number" name="cantidad" value="{{ old('cantidad', 1) }}" min="0" step="0.01"
-                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Cantidad inicial <span class="text-red-500">*</span></label>
+                        <input type="number" name="cantidad" value="{{ old('cantidad', 0) }}" min="0" step="0.01"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Unidad</label>
+                        <select name="unidad" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
+                            @foreach(['pza','caja','lt','kg','rollo','par','juego','bolsa','sobre','galón'] as $u)
+                                <option value="{{ $u }}" {{ old('unidad','pza') == $u ? 'selected' : '' }}>{{ $u }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -54,39 +62,23 @@
                 </div>
             </div>
 
-            {{-- Categoría + Unidad + Estatus --}}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Categoría <span class="text-red-500">*</span></label>
-                    <select name="categoria" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
-                        @foreach(['Herramientas','Consumibles','Periféricos','Refacciones','Otro'] as $c)
-                            <option value="{{ $c }}" {{ old('categoria') == $c ? 'selected' : '' }}>{{ $c }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Unidad</label>
-                    <select name="unidad" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
-                        @foreach(['pza','caja','lt','kg','rollo','par','juego'] as $u)
-                            <option value="{{ $u }}" {{ old('unidad','pza') == $u ? 'selected' : '' }}>{{ $u }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Estatus <span class="text-red-500">*</span></label>
-                    <select name="status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
-                        <option value="Disponible" {{ old('status','Disponible') == 'Disponible' ? 'selected' : '' }}>Disponible</option>
-                        <option value="Agotado"    {{ old('status') == 'Agotado' ? 'selected' : '' }}>Agotado</option>
-                        <option value="Baja"       {{ old('status') == 'Baja' ? 'selected' : '' }}>Baja</option>
-                    </select>
-                </div>
+            {{-- Categoría --}}
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Categoría <span class="text-red-500">*</span></label>
+                <select name="categoria" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
+                    <option value="">-- Seleccionar --</option>
+                    @foreach($categorias as $c)
+                        <option value="{{ $c }}" {{ old('categoria') == $c ? 'selected' : '' }}>{{ $c }}</option>
+                    @endforeach
+                </select>
             </div>
 
             {{-- Descripción --}}
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Descripción</label>
                 <textarea name="descripcion" rows="3"
-                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100">{{ old('descripcion') }}</textarea>
+                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-900 focus:ring focus:ring-blue-100"
+                    placeholder="Notas adicionales, marca, especificaciones...">{{ old('descripcion') }}</textarea>
             </div>
 
             {{-- Archivos --}}
@@ -97,9 +89,10 @@
                         class="block w-full text-sm text-slate-500 file:bg-blue-50 file:text-blue-700 file:rounded-full file:border-0 file:px-4 file:py-2">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-red-700 mb-1">Reporte PDF (Opcional)</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Documento PDF (Opcional)</label>
                     <input type="file" name="pdf_baja" accept=".pdf"
                         class="block w-full text-sm text-slate-500 file:bg-red-50 file:text-red-700 file:rounded-full file:border-0 file:px-4 file:py-2">
+                    <p class="text-xs text-gray-400 mt-1">Ficha técnica, vale de baja, etc.</p>
                 </div>
             </div>
 

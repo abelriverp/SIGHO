@@ -7,9 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class InventarioMovimiento extends Model
 {
     protected $fillable = [
-        'inventario_item_id', 'user_id', 'tipo',
-        'cantidad', 'cantidad_anterior', 'cantidad_nueva',
-        'motivo', 'notas',
+        'hotel_code',
+        'inventario_item_id',
+        'user_id',
+        'tipo',
+        'cantidad',
+        'cantidad_anterior',
+        'cantidad_nueva',
+        'motivo',
+        'notas',
     ];
 
     protected $casts = [

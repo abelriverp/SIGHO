@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
     // Redes e Inventario General
     Route::middleware(['modulo:inventario_suministros'])->group(function () {
         Route::resource('inventory', InventoryController::class);
+	 Route::post('inventory/{inventory}/movimiento', [InventoryController::class, 'registrarMovimiento'])->name('inventory.movimiento');
     });
     Route::resource('network', NetworkController::class);
     Route::post('/network/port/{id}', [NetworkController::class, 'updatePort'])->name('network.port.update');

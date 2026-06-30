@@ -29,17 +29,29 @@
         </a>
     </div>
 
+    {{-- Alertas de sesión --}}
+    @if(session('success'))
+        <div class="bg-green-50 border border-green-200 text-green-800 text-sm font-medium px-4 py-3 rounded mb-4">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded mb-4">
+            @foreach($errors->all() as $e)<p>{{ $e }}</p>@endforeach
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         {{-- Info principal --}}
         <div class="md:col-span-2 space-y-4">
 
-            {{-- Tarjeta de stock --}}
+            {{-- Tarjeta de stock + botones de movimiento --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-                <h3 class="text-xs font-bold text-gray-400 uppercase mb-4">Stock</h3>
-                <div class="flex items-end gap-6">
+                <h3 class="text-xs font-bold text-gray-400 uppercase mb-4">Stock Actual</h3>
+                <div class="flex items-end gap-6 mb-5">
                     <div>
-                        <span class="text-xs text-gray-400 uppercase font-bold block">Cantidad actual</span>
+                        <span class="text-xs text-gray-400 uppercase font-bold block">Cantidad</span>
                         <span class="text-4xl font-bold {{ $item->bajoPorStock() ? 'text-red-600' : 'text-[#041b32]' }}">
                             {{ $item->cantidad }}
                         </span>
@@ -48,7 +60,7 @@
                     @if($item->stock_minimo > 0)
                     <div>
                         <span class="text-xs text-gray-400 uppercase font-bold block">Stock mínimo</span>
-                        <span class="text-2xl font-bold text-gray-400">{{ $item->stock_minimo }}</span>
+                        <span class="text-2xl font-bold text-gray-400">{{ $item->stock_minimo }} <span class="text-sm">{{ $item->unidad }}</span></span>
                     </div>
                     @endif
                     @if($item->bajoPorStock())
@@ -58,6 +70,60 @@
                             </span>
                         </div>
                     @endif
+                </div>
+
+                {{-- Botones + formulario de movimiento rápido (Alpine.js) --}}
+                <div x-data="{ tipo: '' }" class="border-t border-gray-100 pt-4">
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-3">Registrar movimiento</p>
+
+                    <div class="flex gap-2 mb-3">
+                        <button @click="tipo = tipo === 'entrada' ? '' : 'entrada'"
+                            :class="tipo === 'entrada' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-800 hover:bg-green-100'"
+                            class="flex-1 text-sm font-bold py-2 px-4 rounded-lg border border-green-200 transition">
+                            ↑ Entrada
+                        </button>
+                        <button @click="tipo = tipo === 'salida' ? '' : 'salida'"
+                            :class="tipo === 'salida' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-800 hover:bg-red-100'"
+                            class="flex-1 text-sm font-bold py-2 px-4 rounded-lg border border-red-200 transition">
+                            ↓ Salida
+                        </button>
+                    </div>
+
+                    <form x-show="tipo !== ''" x-cloak
+                        action="{{ route('inventory.movimiento', $item->id) }}" method="POST"
+                        class="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
+                        @csrf
+                        <input type="hidden" name="tipo" :value="tipo">
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">
+                                    Cantidad a <span x-text="tipo === 'entrada' ? 'ingresar' : 'retirar'"></span>
+                                </label>
+                                <input type="number" name="cantidad" min="0.01" step="0.01" required
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-blue-900 focus:ring focus:ring-blue-100"
+                                    placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Motivo <span class="text-red-500">*</span></label>
+                                <input type="text" name="motivo" required maxlength="255"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-blue-900 focus:ring focus:ring-blue-100"
+                                    :placeholder="tipo === 'entrada' ? 'Ej: Reabastecimiento semanal' : 'Ej: Uso en habitación 305'">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 justify-end">
+                            <button type="button" @click="tipo = ''"
+                                class="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                :class="tipo === 'entrada' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'"
+                                class="px-4 py-2 text-sm text-white font-bold rounded-lg transition">
+                                Confirmar <span x-text="tipo"></span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -71,40 +137,43 @@
 
             {{-- Historial de movimientos --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
+                <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                     <h3 class="text-xs font-bold text-gray-500 uppercase">Historial de movimientos</h3>
+                    <span class="text-xs text-gray-400">{{ $item->movimientos->count() }} registro(s)</span>
                 </div>
                 @if($item->movimientos->count() > 0)
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-xs text-gray-400 uppercase border-b border-gray-100">
-                                <th class="py-2 px-4 text-left">Fecha</th>
-                                <th class="py-2 px-4 text-left">Tipo</th>
-                                <th class="py-2 px-4 text-right">Cantidad</th>
-                                <th class="py-2 px-4 text-right">Resultado</th>
-                                <th class="py-2 px-4 text-left">Motivo</th>
-                                <th class="py-2 px-4 text-left">Usuario</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            @foreach($item->movimientos->sortByDesc('created_at') as $mov)
-                            <tr class="hover:bg-gray-50">
-                                <td class="py-2 px-4 text-gray-500 text-xs">{{ $mov->created_at->format('d/m/Y H:i') }}</td>
-                                <td class="py-2 px-4">
-                                    <span class="text-xs font-bold {{ $mov->tipo == 'entrada' ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50' }} px-2 py-1 rounded-full">
-                                        {{ $mov->tipo == 'entrada' ? '↑ Entrada' : '↓ Salida' }}
-                                    </span>
-                                </td>
-                                <td class="py-2 px-4 text-right font-bold {{ $mov->tipo == 'entrada' ? 'text-green-700' : 'text-red-600' }}">
-                                    {{ $mov->tipo == 'entrada' ? '+' : '-' }}{{ $mov->cantidad }}
-                                </td>
-                                <td class="py-2 px-4 text-right text-gray-600 font-bold">{{ $mov->cantidad_nueva }}</td>
-                                <td class="py-2 px-4 text-gray-500 text-xs">{{ $mov->motivo ?? '—' }}</td>
-                                <td class="py-2 px-4 text-gray-500 text-xs">{{ $mov->usuario->name ?? '—' }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-xs text-gray-400 uppercase border-b border-gray-100">
+                                    <th class="py-2 px-4 text-left">Fecha</th>
+                                    <th class="py-2 px-4 text-left">Tipo</th>
+                                    <th class="py-2 px-4 text-right">Cantidad</th>
+                                    <th class="py-2 px-4 text-right">Stock resultante</th>
+                                    <th class="py-2 px-4 text-left">Motivo</th>
+                                    <th class="py-2 px-4 text-left">Registró</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                @foreach($item->movimientos->sortByDesc('created_at') as $mov)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="py-2 px-4 text-gray-500 text-xs whitespace-nowrap">{{ $mov->created_at->format('d/m/Y H:i') }}</td>
+                                    <td class="py-2 px-4">
+                                        <span class="text-xs font-bold {{ $mov->tipo == 'entrada' ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50' }} px-2 py-1 rounded-full">
+                                            {{ $mov->tipo == 'entrada' ? '↑ Entrada' : '↓ Salida' }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2 px-4 text-right font-bold {{ $mov->tipo == 'entrada' ? 'text-green-700' : 'text-red-600' }}">
+                                        {{ $mov->tipo == 'entrada' ? '+' : '-' }}{{ $mov->cantidad }} {{ $item->unidad }}
+                                    </td>
+                                    <td class="py-2 px-4 text-right text-gray-600 font-bold">{{ $mov->cantidad_nueva }} {{ $item->unidad }}</td>
+                                    <td class="py-2 px-4 text-gray-500 text-xs">{{ $mov->motivo ?? '—' }}</td>
+                                    <td class="py-2 px-4 text-gray-500 text-xs">{{ $mov->usuario->name ?? '—' }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 @else
                     <div class="py-10 text-center text-gray-400 text-sm">
                         Sin movimientos registrados aún.
@@ -140,9 +209,11 @@
             {{-- Meta --}}
             <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-2 text-xs text-gray-500">
                 <div><span class="font-bold text-gray-700">Hotel:</span> {{ $item->hotel_code ?? '—' }}</div>
+                <div><span class="font-bold text-gray-700">Unidad:</span> {{ $item->unidad ?? '—' }}</div>
                 <div><span class="font-bold text-gray-700">Registrado por:</span> {{ $item->usuario->name ?? '—' }}</div>
                 <div><span class="font-bold text-gray-700">Creado:</span> {{ $item->created_at->format('d/m/Y') }}</div>
                 <div><span class="font-bold text-gray-700">Última actualización:</span> {{ $item->updated_at->format('d/m/Y H:i') }}</div>
+                <div><span class="font-bold text-gray-700">Movimientos:</span> {{ $item->movimientos->count() }}</div>
             </div>
         </div>
     </div>
