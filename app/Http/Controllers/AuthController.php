@@ -9,7 +9,7 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            return redirect('/');
+            return redirect()->route('dashboard');
         }
         return view('auth.login');
     }
@@ -26,14 +26,13 @@ class AuthController extends Controller
             
             $user = Auth::user();
  
-            // Redirigir según rol
-            if ($user->isAdmin()) {
-                return redirect()->route('assets.index');
-            } elseif ($user->isGerente() || $user->isTecnico()) {
-                return redirect()->route('tickets.index');
-            } else {
-                return redirect()->route('tickets.create');
+            // Si requiere cambio de contraseña y no es admin, va a su formulario
+            if ($user->must_change_password && !$user->isAdmin()) {
+                return redirect()->route('password.change');
             }
+
+            // Todos los usuarios autorizados entran ahora directo al Dashboard de Resumen
+            return redirect()->route('dashboard');
         }  
  
         return back()->withErrors([
