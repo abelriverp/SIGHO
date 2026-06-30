@@ -63,7 +63,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('revisions', RevisionController::class)->only(['edit', 'update', 'destroy']);
 
     // Redes e Inventario General
-    Route::resource('inventory', InventoryController::class);
+    Route::middleware(['modulo:inventario_suministros'])->group(function () {
+        Route::resource('inventory', InventoryController::class);
+    });
     Route::resource('network', NetworkController::class);
     Route::post('/network/port/{id}', [NetworkController::class, 'updatePort'])->name('network.port.update');
 

@@ -7,27 +7,30 @@ use Illuminate\Database\Eloquent\Model;
 class InventarioItem extends Model
 {
     protected $fillable = [
+        'hotel_code',
+        'area',
         'user_id',
         'nombre',
-        'cantidad',        // ← nuevo
+        'cantidad',
         'categoria',
-        'status',          // ← nuevo
+        'status',
         'unidad',
         'cantidad_actual',
         'stock_minimo',
         'descripcion',
-        'imagen_path',     // ← nuevo
-        'pdf_path',        // ← nuevo
+        'imagen_path',
+        'pdf_path',
         'activo',
     ];
 
     protected $casts = [
         'activo'          => 'boolean',
         'cantidad_actual' => 'float',
-        'cantidad'        => 'float',  // ← nuevo
+        'cantidad'        => 'float',
         'stock_minimo'    => 'float',
     ];
 
+    // ─── Relaciones ──────────────────────────────────────────
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -38,8 +41,16 @@ class InventarioItem extends Model
         return $this->hasMany(InventarioMovimiento::class);
     }
 
+    // ─── Helpers ─────────────────────────────────────────────
     public function bajoPorStock(): bool
     {
-        return $this->stock_minimo > 0 && $this->cantidad_actual <= $this->stock_minimo;
+        return $this->stock_minimo > 0 && $this->cantidad <= $this->stock_minimo;
+    }
+
+    public function statusCalculado(): string
+    {
+        if ($this->cantidad <= 0) return 'Agotado';
+        if ($this->bajoPorStock()) return 'Stock Bajo';
+        return $this->status ?? 'Disponible';
     }
 }

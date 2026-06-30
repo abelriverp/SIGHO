@@ -9,7 +9,7 @@ class CheckModuloAcceso
 {
     // Módulos libres — todos los usuarios autenticados tienen acceso sin asignación
     protected array $modulosLibres = [
-        'tickets',
+        'gestion_tickets',
     ];
 
     public function handle(Request $request, Closure $next, string $clave): mixed
@@ -22,11 +22,6 @@ class CheckModuloAcceso
 
         // Admin siempre pasa
         if ($user->role === 'admin') {
-            return $next($request);
-        }
-
-        // Técnicos y gerentes siempre tienen acceso a tickets
-        if (in_array($user->role, ['tecnico', 'gerente']) && $clave === 'tickets') {
             return $next($request);
         }
 

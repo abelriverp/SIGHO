@@ -70,11 +70,12 @@ class User extends Authenticatable
     // Admin siempre tiene acceso
     if ($this->isAdmin()) return true;
 
-    // Tickets es libre para todos
-    if ($clave === 'tickets') return true;
+    // Tickets es libre para todos los usuarios autenticados
+    if ($clave === 'gestion_tickets') return true;
 
-    // Técnicos y gerentes tienen tickets automáticamente
-    if (in_array($this->role, ['tecnico', 'gerente']) && $clave === 'tickets') return true;
+    if (!$this->relationLoaded('modulos')) {
+        $this->load('modulos');
+    }
 
     return $this->modulos->contains('clave', $clave);
 }
