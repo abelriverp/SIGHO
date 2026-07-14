@@ -149,4 +149,114 @@ class DashboardMetricsServiceTest extends TestCase
         $this->assertSame('Sistemas', $metricas['tiempoPorDepartamento'][0]['departamento']);
         $this->assertEqualsWithDelta(10.0, $metricas['tiempoPorDepartamento'][0]['horas_promedio'], 0.1);
     }
+
+    public function test_sla_counts_a_ticket_resolved_within_24_hours_as_compliant(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+
+        $this->actingAs($reportante);
+        $ticket = $this->crearTicket($reportante);
+        $ticket->forceFill(['created_at' => now()->subHours(10)])->save();
+        $ticket->forceFill(['status' => 'Resuelto', 'fecha_resolucion' => now()])->save();
+
+        $servicio = app(DashboardMetricsService::class);
+        $sla = $servicio->metricas($admin, 'HEMZT')['cumplimientoSla'];
+
+        $this->assertSame(1, $sla['total']);
+        $this->assertSame(1, $sla['cumplidos']);
+        $this->assertSame(0, $sla['incumplidos']);
+        $this->assertSame(100.0, $sla['porcentaje']);
+        $this->assertSame('verde', $sla['semaforo']);
+    }
+
+    public function test_sla_counts_a_ticket_resolved_after_24_hours_as_non_compliant(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+
+        $this->actingAs($reportante);
+        $ticket = $this->crearTicket($reportante);
+        $ticket->forceFill(['created_at' => now()->subHours(30)])->save();
+        $ticket->forceFill(['status' => 'Resuelto', 'fecha_resolucion' => now()])->save();
+
+        $servicio = app(DashboardMetricsService::class);
+        $sla = $servicio->metricas($admin, 'HEMZT')['cumplimientoSla'];
+
+        $this->assertSame(1, $sla['total']);
+        $this->assertSame(0, $sla['cumplidos']);
+        $this->assertSame(1, $sla['incumplidos']);
+        $this->assertSame(0.0, $sla['porcentaje']);
+        $this->assertSame('rojo', $sla['semaforo']);
+    }
+
+    public function test_sla_counts_a_still_open_ticket_past_24_hours_as_non_compliant(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+
+        $this->actingAs($reportante);
+        $ticket = $this->crearTicket($reportante);
+        $ticket->forceFill(['created_at' => now()->subHours(48)])->save();
+        // Sigue "Abierto": nadie lo ha marcado como resuelto todavía.
+
+        $servicio = app(DashboardMetricsService::class);
+        $sla = $servicio->metricas($admin, 'HEMZT')['cumplimientoSla'];
+
+        $this->assertSame(1, $sla['total']);
+        $this->assertSame(0, $sla['cumplidos']);
+        $this->assertSame(1, $sla['incumplidos']);
+    }
+
+    public function test_sla_excludes_a_still_open_ticket_within_its_first_24_hours(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+
+        $this->actingAs($reportante);
+        $ticket = $this->crearTicket($reportante);
+        $ticket->forceFill(['created_at' => now()->subHours(2)])->save();
+        // Recién creado, sigue "Abierto": todavía no se puede juzgar.
+
+        $servicio = app(DashboardMetricsService::class);
+        $sla = $servicio->metricas($admin, 'HEMZT')['cumplimientoSla'];
+
+        $this->assertSame(0, $sla['total']);
+        $this->assertNull($sla['porcentaje']);
+        $this->assertSame('sin_datos', $sla['semaforo']);
+    }
+
+    public function test_sla_percentage_and_tendencia_compare_current_period_against_the_previous_one(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+        $this->actingAs($reportante);
+
+        // Periodo actual (últimos 7 días): 3 de 4 a tiempo => 75%.
+        for ($i = 0; $i < 3; $i++) {
+            $t = $this->crearTicket($reportante);
+            $t->forceFill(['created_at' => now()->subHours(10)])->save();
+            $t->forceFill(['status' => 'Resuelto', 'fecha_resolucion' => now()])->save();
+        }
+        $tarde = $this->crearTicket($reportante);
+        $tarde->forceFill(['created_at' => now()->subHours(30)])->save();
+        $tarde->forceFill(['status' => 'Resuelto', 'fecha_resolucion' => now()])->save();
+
+        // Periodo anterior (8-9 días atrás): 1 de 2 a tiempo => 50%.
+        $bien = $this->crearTicket($reportante);
+        $bien->forceFill(['created_at' => now()->subDays(9)])->save();
+        $bien->forceFill(['status' => 'Resuelto', 'fecha_resolucion' => now()->subDays(9)->addHours(5)])->save();
+
+        $mal = $this->crearTicket($reportante);
+        $mal->forceFill(['created_at' => now()->subDays(9)])->save();
+        $mal->forceFill(['status' => 'Resuelto', 'fecha_resolucion' => now()->subDays(9)->addHours(40)])->save();
+
+        $servicio = app(DashboardMetricsService::class);
+        $sla = $servicio->metricas($admin, 'HEMZT')['cumplimientoSla'];
+
+        $this->assertSame(4, $sla['total']);
+        $this->assertSame(75.0, $sla['porcentaje']);
+        $this->assertSame('amarillo', $sla['semaforo']);
+        $this->assertEqualsWithDelta(25.0, $sla['tendencia'], 0.1); // 75% - 50% del periodo anterior
+    }
 }

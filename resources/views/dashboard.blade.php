@@ -15,6 +15,49 @@
         </div>
     </div>
 
+    @php
+        $sla = $graficas['cumplimientoSla'];
+        $semaforoEstilos = [
+            'verde'     => ['bg' => 'bg-emerald-50', 'border' => 'border-emerald-200', 'text' => 'text-emerald-700', 'dot' => 'bg-emerald-500', 'label' => 'Bien'],
+            'amarillo'  => ['bg' => 'bg-amber-50',   'border' => 'border-amber-200',   'text' => 'text-amber-700',   'dot' => 'bg-amber-500',   'label' => 'Atención'],
+            'rojo'      => ['bg' => 'bg-red-50',     'border' => 'border-red-200',     'text' => 'text-red-700',     'dot' => 'bg-red-500',     'label' => 'Crítico'],
+            'sin_datos' => ['bg' => 'bg-gray-50',    'border' => 'border-gray-200',    'text' => 'text-gray-500',    'dot' => 'bg-gray-400',    'label' => 'Sin datos'],
+        ];
+        $estiloSla = $semaforoEstilos[$sla['semaforo']];
+    @endphp
+
+    <div class="mb-6 rounded-lg {{ $estiloSla['bg'] }} {{ $estiloSla['border'] }} border p-5 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="flex h-3 w-3 rounded-full {{ $estiloSla['dot'] }}"></span>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide {{ $estiloSla['text'] }}">
+                        SLA de Tickets ({{ $sla['sla_horas'] }} hrs) — {{ $estiloSla['label'] }}
+                    </p>
+                    <p class="text-2xl font-bold text-gray-900 mt-0.5">
+                        @if($sla['porcentaje'] !== null)
+                            {{ $sla['porcentaje'] }}% resuelto a tiempo
+                        @else
+                            Sin tickets evaluables
+                        @endif
+                    </p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-600 sm:text-right">
+                @if($sla['total'] > 0)
+                    <p>{{ $sla['cumplidos'] }} de {{ $sla['total'] }} tickets cerrados a tiempo en los últimos {{ $sla['periodo_dias'] }} días</p>
+                @else
+                    <p>No hubo tickets que evaluar en los últimos {{ $sla['periodo_dias'] }} días</p>
+                @endif
+                @if($sla['tendencia'] !== null)
+                    <p class="mt-1 font-medium {{ $sla['tendencia'] >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                        {{ $sla['tendencia'] >= 0 ? '↑' : '↓' }} {{ abs($sla['tendencia']) }} pts vs. periodo anterior
+                    </p>
+                @endif
+            </div>
+        </div>
+    </div>
+
     @if($suministrosBajos > 0 && auth()->user()->tieneModulo('inventario_suministros'))
         <div class="mb-6 rounded-md bg-amber-50 p-4 border border-amber-200 shadow-sm animate-pulse">
             <div class="flex">
