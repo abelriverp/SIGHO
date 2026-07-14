@@ -44,6 +44,19 @@
                     Descargar PDF
                 </a>
             @endif
+
+            {{-- Eliminar ticket (solo Administrador) --}}
+            @if(auth()->user()->isAdmin())
+                <form action="{{ route('tickets.destroy', $ticket->id) }}" method="POST"
+                      onsubmit="return confirm('¿Eliminar este ticket permanentemente? Esta acción no se puede deshacer.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit"
+                        class="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-red-100 transition">
+                        🗑️ Eliminar
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 
@@ -114,9 +127,56 @@
                     </p>
                 </div>
 
+                @if($ticket->campos_extra)
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Detalle de la solicitud a Sistemas</h4>
+                    <div class="bg-slate-50 border border-slate-100 rounded p-3 space-y-1 text-sm text-slate-700">
+                        @php
+                            $ce = $ticket->campos_extra;
+                            $etiquetas = [
+                                'tipo_solicitud'       => 'Tipo de solicitud',
+                                'otro_detalle'         => 'Detalle',
+                                'aplicativo'           => 'Aplicativo',
+                                'no_colaborador'       => 'No. Colaborador',
+                                'nombre_completo'      => 'Nombre Completo',
+                                'puesto'               => 'Puesto',
+                                'perfil_replicar'      => 'Perfil a replicar',
+                                'correo_institucional' => 'Correo institucional',
+                                'jefe_directo'         => 'Jefe Directo',
+                                'detalle_modificacion' => 'Detalle de la modificación',
+                            ];
+                            $tiposSolicitud = [
+                                'alta_colaborador'     => 'Dar alta de colaborador',
+                                'modificacion_sistema' => 'Modificaciones de sistema',
+                                'otro'                 => 'Otro',
+                            ];
+                            $aplicativos = [
+                                'symphony'   => 'Symphony',
+                                'opera'      => 'Opera',
+                                'mail'       => 'Mail',
+                                'sap'        => 'SAP',
+                                'wintb'      => 'WinTB',
+                                'guesthotel' => 'GuestHotel',
+                            ];
+                        @endphp
+                        @foreach($ce as $campo => $valor)
+                            @continue(is_null($valor) || $valor === '')
+                            @php
+                                $valorMostrado = match($campo) {
+                                    'tipo_solicitud' => $tiposSolicitud[$valor] ?? $valor,
+                                    'aplicativo'     => $aplicativos[$valor] ?? $valor,
+                                    default          => $valor,
+                                };
+                            @endphp
+                            <p><span class="font-bold">{{ $etiquetas[$campo] ?? $campo }}:</span> {{ $valorMostrado }}</p>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 @if(in_array($ticket->status, ['Resuelto', 'Cerrado']))
                 <div class="pt-4 border-t border-slate-100">
-                    <h4 class="text-xs font-bold text-green-600 uppercase tracking-wider">Solución aplicada por TI</h4>
+                    <h4 class="text-xs font-bold text-green-600 uppercase tracking-wider">Solución aplicada por soporte</h4>
                     <p class="text-slate-700 mt-1">{{ $ticket->notas_admin }}</p>
                     <p class="text-[10px] text-slate-400 mt-2 italic">Resuelto el: {{ $ticket->fecha_resolucion?->format('d/m/Y H:i') }}</p>
                 </div>
@@ -170,24 +230,37 @@
             {{-- ============================================ --}}
             <div class="space-y-4 no-print-evidence">
 
-                {{-- Evidencia original al crear el ticket --}}
+                {{-- Evidencia original al crear el ticket (varios archivos, o el archivo
+                     único de tickets creados antes de que se permitiera adjuntar más de uno) --}}
                 <div>
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Evidencia Adjunta</h4>
-                    @if($ticket->archivo_path)
-                        <div class="rounded-lg border border-slate-200 overflow-hidden shadow-sm">
-                            @php $extension = pathinfo($ticket->archivo_path, PATHINFO_EXTENSION); @endphp
-                            @if(in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'webp']))
-                                <img src="{{ Storage::url($ticket->archivo_path) }}"
-                                     alt="Evidencia"
-                                     class="w-full h-auto object-cover max-h-64 cursor-pointer"
-                                     onclick="document.getElementById('modal-img').src=this.src; document.getElementById('img-modal').classList.remove('hidden')">
-                                <p class="text-[10px] text-center text-slate-400 py-1">Clic para ampliar</p>
-                            @elseif(in_array(strtolower($extension), ['mp4', 'mov']))
-                                <video controls class="w-full max-h-64">
-                                    <source src="{{ Storage::url($ticket->archivo_path) }}" type="video/{{ $extension }}">
-                                </video>
-                            @endif
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">
+                        Evidencia Adjunta
+                        @if($ticket->archivos_evidencia && count($ticket->archivos_evidencia) > 1)
+                            <span class="text-slate-300 font-normal">({{ count($ticket->archivos_evidencia) }})</span>
+                        @endif
+                    </h4>
+                    @php
+                        $rutasEvidencia = $ticket->archivos_evidencia ?: ($ticket->archivo_path ? [$ticket->archivo_path] : []);
+                    @endphp
+                    @if(count($rutasEvidencia) > 0)
+                        <div class="grid {{ count($rutasEvidencia) > 1 ? 'grid-cols-2' : 'grid-cols-1' }} gap-2">
+                            @foreach($rutasEvidencia as $ruta)
+                                @php $extension = strtolower(pathinfo($ruta, PATHINFO_EXTENSION)); @endphp
+                                <div class="rounded-lg border border-slate-200 overflow-hidden shadow-sm">
+                                    @if(in_array($extension, ['jpg', 'jpeg', 'png', 'webp']))
+                                        <img src="{{ Storage::url($ruta) }}"
+                                             alt="Evidencia"
+                                             class="w-full h-auto object-cover max-h-64 cursor-pointer"
+                                             onclick="document.getElementById('modal-img').src=this.src; document.getElementById('img-modal').classList.remove('hidden')">
+                                    @elseif(in_array($extension, ['mp4', 'mov']))
+                                        <video controls class="w-full max-h-64">
+                                            <source src="{{ Storage::url($ruta) }}" type="video/{{ $extension }}">
+                                        </video>
+                                    @endif
+                                </div>
+                            @endforeach
                         </div>
+                        <p class="text-[10px] text-center text-slate-400 py-1">Clic en una foto para ampliar</p>
                     @else
                         <div class="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
                             <p class="text-xs text-slate-400">Sin evidencia adjunta al crear</p>
@@ -290,12 +363,103 @@
         @endif
 
         {{-- ============================================ --}}
+        {{-- BLOQUE: REASIGNAR A OTRO DEPARTAMENTO        --}}
+        {{-- Para cuando el ticket se enrutó al departamento          --}}
+        {{-- equivocado. Un técnico solo puede reasignar tickets de   --}}
+        {{-- su propio departamento; un Admin puede reasignar         --}}
+        {{-- cualquiera. Siempre exige un motivo (mínimo 10           --}}
+        {{-- caracteres) para que quede registrado en la bitácora.    --}}
+        {{-- ============================================ --}}
+        @php
+            $departamentosDisponibles = \App\Models\Departamento::activos()->orderBy('nombre')->pluck('nombre');
+            $maxReasignaciones = 2;
+            $puedeReasignar = in_array($ticket->status, ['Abierto', 'Reabierto'])
+                && auth()->user()->puedeResponderTickets()
+                && auth()->id() !== $ticket->user_id
+                && (!auth()->user()->isTecnico() || $ticket->departamento_destino === auth()->user()->departamento)
+                && ($ticket->veces_reasignado < $maxReasignaciones || auth()->user()->isAdmin());
+        @endphp
+        @if($puedeReasignar)
+            <div class="px-6 py-4 border-t border-slate-200 no-print">
+                <details>
+                    <summary class="text-xs text-slate-500 font-bold cursor-pointer hover:text-slate-700">
+                        🔀 ¿Este ticket no le corresponde a "{{ $ticket->departamento_destino }}"? Reasignar a otro departamento
+                    </summary>
+                    <form action="{{ route('tickets.reasignar', $ticket->id) }}" method="POST" class="mt-3">
+                        @csrf
+                        @method('PATCH')
+
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Departamento correcto</label>
+                        <select name="departamento_destino_nuevo" required
+                            class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 mb-3 text-sm focus:outline-none focus:border-[#041b32]">
+                            <option value="" disabled selected>Selecciona departamento...</option>
+                            @foreach($departamentosDisponibles as $depto)
+                                @if($depto !== $ticket->departamento_destino)
+                                    <option value="{{ $depto }}">{{ $depto }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Motivo de la reasignación</label>
+                        <textarea name="motivo_reasignacion" required rows="2" minlength="10"
+                            class="w-full border border-slate-300 rounded-lg text-sm p-3 mb-2 focus:outline-none focus:border-slate-400"
+                            placeholder="Explica por qué este ticket no le corresponde a tu departamento (ej. 'es una falla eléctrica, no de sistemas')..."></textarea>
+
+                        <p class="text-[10px] text-slate-400 mb-3 italic">
+                            Quedará registrado en la bitácora y auditoría del ticket, con tu nombre y el motivo.
+                            @if(!auth()->user()->isAdmin())
+                                Un ticket solo puede reasignarse {{ $maxReasignaciones }} veces; después requiere que un Administrador lo mueva.
+                            @endif
+                        </p>
+
+                        <button type="submit"
+                            onclick="return confirm('¿Reasignar este ticket a otro departamento?')"
+                            class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded shadow transition text-sm">
+                            Reasignar ticket
+                        </button>
+                    </form>
+                </details>
+            </div>
+        @endif
+
+        {{-- ============================================ --}}
+        {{-- BLOQUE: DESHACER RESOLUCIÓN (error de dedo)  --}}
+        {{-- Para quien resolvió el ticket (o un admin), cuando se marcó --}}
+        {{-- como resuelto por equivocación y el usuario aún no confirmó --}}
+        {{-- ni rechazó la solución. --}}
+        {{-- ============================================ --}}
+        @php
+            $puedeDeshacerResolucion = $ticket->status === 'Resuelto'
+                && auth()->user()->puedeResponderTickets()
+                && (auth()->id() === $ticket->resolved_by || auth()->user()->isAdmin());
+        @endphp
+        @if($puedeDeshacerResolucion)
+            <div class="px-6 py-4 border-t border-slate-200 no-print">
+                <details>
+                    <summary class="text-xs text-slate-500 font-bold cursor-pointer hover:text-slate-700">↩️ ¿Marcaste este ticket como resuelto por error? Deshacer resolución</summary>
+                    <form action="{{ route('tickets.deshacer-resolucion', $ticket->id) }}" method="POST" class="mt-3">
+                        @csrf
+                        @method('PATCH')
+                        <textarea name="motivo" required rows="2" minlength="10"
+                            class="w-full border border-slate-300 rounded-lg text-sm p-3 mb-2 focus:outline-none focus:border-slate-400"
+                            placeholder="Explica brevemente por qué se deshace (ej. 'se marcó por error, era otro ticket')..."></textarea>
+                        <button type="submit"
+                            onclick="return confirm('¿Deshacer la resolución de este ticket? Volverá a estado \'Abierto\' y quedará registrado en la bitácora.')"
+                            class="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 rounded shadow transition text-sm">
+                            Deshacer resolución
+                        </button>
+                    </form>
+                </details>
+            </div>
+        @endif
+
+        {{-- ============================================ --}}
         {{-- BLOQUE: CONFIRMACIÓN DEL USUARIO             --}}
         {{-- ============================================ --}}
         @if($ticket->status === 'Resuelto' && auth()->id() === $ticket->user_id)
             <div class="px-6 py-6 border-t border-blue-100 bg-blue-50 no-print">
                 <h4 class="text-sm font-bold text-blue-800 mb-1">¿Tu problema fue solucionado?</h4>
-                <p class="text-xs text-blue-600 mb-4">El equipo de TI ha registrado una solución. Por favor confirma si el problema fue resuelto satisfactoriamente.</p>
+                <p class="text-xs text-blue-600 mb-4">El equipo de soporte ha registrado una solución. Por favor confirma si el problema fue resuelto satisfactoriamente.</p>
 
                 <form action="{{ route('tickets.confirmar', $ticket->id) }}" method="POST" class="mb-3">
                     @csrf
@@ -342,7 +506,7 @@
                         @php
                             $esAutor      = auth()->id() === $nota->user_id;
                             $minutosDesde = now()->diffInMinutes($nota->created_at);
-                            $puedeEditar  = $esAutor && $minutosDesde <= 15 && auth()->user()->puedeResponderTickets();
+                            $puedeEditar  = $esAutor && $minutosDesde <= 15 && auth()->user()->puedeResponderTickets() && $nota->esEditable();
                         @endphp
                         <div class="flex gap-3" id="nota-{{ $nota->id }}">
                             <div class="flex-shrink-0 w-2 rounded-full {{ $nota->esPublica() ? 'bg-green-400' : 'bg-slate-400' }}"></div>
@@ -354,6 +518,9 @@
                                             <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold">🔒 Interna</span>
                                         @else
                                             <span class="text-[9px] bg-green-200 text-green-700 px-1.5 py-0.5 rounded uppercase font-bold">🌐 Pública</span>
+                                        @endif
+                                        @if($nota->es_automatica)
+                                            <span class="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold" title="Registro generado automáticamente por el sistema, no editable">🔒 Sistema</span>
                                         @endif
                                         @if($nota->editado_at)
                                             <span class="text-[9px] text-slate-400 italic">✏️ Editada {{ $nota->editado_at->format('d/m H:i') }}</span>
@@ -420,7 +587,7 @@
                     <div class="flex items-center gap-3">
                         <select name="tipo" class="border border-slate-300 rounded-lg text-xs px-3 py-2 focus:outline-none focus:border-[#041b32]">
                             <option value="publica">🌐 Pública (visible para el usuario)</option>
-                            <option value="interna">🔒 Interna (solo personal TI)</option>
+                            <option value="interna">🔒 Interna (solo personal de soporte)</option>
                         </select>
                         <button type="submit" class="bg-[#041b32] text-white text-xs font-bold px-6 py-2 rounded-lg hover:opacity-90 transition">
                             Agregar Nota

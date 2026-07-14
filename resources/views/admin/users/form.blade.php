@@ -26,10 +26,23 @@
                 <label class="block text-sm font-bold text-slate-700 mb-1">
                     {{ isset($user) ? 'Nueva Contraseña (dejar en blanco para no cambiar)' : 'Contraseña Temporal' }}
                 </label>
-                <input type="password" name="password" {{ isset($user) ? '' : 'required' }} minlength="6" 
-                    class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
+                <div class="flex gap-2">
+                    <input type="password" id="campo-password" name="password" {{ isset($user) ? '' : 'required' }} minlength="6"
+                        autocomplete="new-password"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 font-mono">
+                    <button type="button" onclick="togglePasswordVisible()"
+                        class="whitespace-nowrap bg-slate-200 text-slate-700 font-bold text-xs px-3 rounded-md hover:bg-slate-300">
+                        👁 Ver
+                    </button>
+                    <button type="button" onclick="generarPasswordAleatoria()"
+                        class="whitespace-nowrap bg-slate-200 text-slate-700 font-bold text-xs px-3 rounded-md hover:bg-slate-300">
+                        🎲 Generar
+                    </button>
+                </div>
                 @if(!isset($user))
                     <p class="text-[10px] text-slate-400 mt-1 italic">El usuario deberá cambiarla en su primer inicio de sesión.</p>
+                @else
+                    <p class="text-[10px] text-slate-400 mt-1 italic">Si capturas una contraseña aquí, se le pedirá cambiarla en su próximo inicio de sesión.</p>
                 @endif
             </div>
 
@@ -46,9 +59,22 @@
                         📊 Gerente — Ver todos los tickets (solo lectura)
                     </option>
                     <option value="admin" {{ (isset($user) && $user->role == 'admin') ? 'selected' : '' }}>
-                        ⚙️ Administrador TI — Acceso total al sistema
+                        ⚙️ Administrador — Acceso total al sistema
                     </option>
                 </select>
+            </div>
+
+            <div id="campo-hotel" style="{{ (isset($user) && $user->role == 'admin') ? 'display:none' : '' }}">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Propiedad</label>
+                <select name="hotel_code" class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
+                    <option value="">Selecciona...</option>
+                    @foreach($hoteles as $hotel)
+                        <option value="{{ $hotel->hotel_code }}" {{ (isset($user) && $user->hotel_code == $hotel->hotel_code) ? 'selected' : '' }}>
+                            {{ $hotel->nombre }} ({{ $hotel->hotel_code }})
+                        </option>
+                    @endforeach
+                </select>
+                <p class="text-[10px] text-slate-400 mt-1 italic">El usuario solo verá los datos de esta propiedad. No aplica a Administradores, que ven todas.</p>
             </div>
 
             {{-- Campo de departamento solo para técnicos --}}
@@ -56,10 +82,21 @@
                 <label class="block text-sm font-bold text-slate-700 mb-1">Departamento que atiende</label>
                 <select name="departamento" class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
                     <option value="">Selecciona...</option>
-                    <option value="Sistemas" {{ (isset($user) && $user->departamento == 'Sistemas') ? 'selected' : '' }}>Sistemas / IT</option>
-                    <option value="Mantenimiento" {{ (isset($user) && $user->departamento == 'Mantenimiento') ? 'selected' : '' }}>Mantenimiento</option>
-                    <option value="Seguridad" {{ (isset($user) && $user->departamento == 'Seguridad') ? 'selected' : '' }}>Seguridad</option>
-                    <option value="Ama de Llaves" {{ (isset($user) && $user->departamento == 'Ama de Llaves') ? 'selected' : '' }}>Ama de Llaves</option>
+                    @php
+                        // Se listan los departamentos activos; si el usuario ya tenía
+                        // asignado uno que después se desactivó, se agrega igual para
+                        // no perder de vista su valor actual (pero tendrá que cambiarlo
+                        // si quiere guardar el formulario, ya que no seguirá activo).
+                        $departamentosForm = \App\Models\Departamento::activos()->orderBy('nombre')->pluck('nombre');
+                        if (isset($user) && $user->departamento && !$departamentosForm->contains($user->departamento)) {
+                            $departamentosForm->push($user->departamento);
+                        }
+                    @endphp
+                    @foreach($departamentosForm as $depto)
+                        <option value="{{ $depto }}" {{ (isset($user) && $user->departamento == $depto) ? 'selected' : '' }}>
+                            {{ $depto === 'Sistemas' ? 'Sistemas / IT' : $depto }}
+                        </option>
+                    @endforeach
                 </select>
                 <p class="text-[10px] text-slate-400 mt-1 italic">Solo verá tickets enviados a este departamento.</p>
             </div>
@@ -73,10 +110,38 @@
 </div>
 
 <script>
+    // Genera 6 letras al azar (mayúsculas y minúsculas) y las coloca en el campo de contraseña
+    function generarPasswordAleatoria() {
+        const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+        let pass = '';
+        for (let i = 0; i < 6; i++) {
+            pass += letras.charAt(Math.floor(Math.random() * letras.length));
+        }
+
+        const campo = document.getElementById('campo-password');
+        campo.value = pass;
+        campo.type = 'text'; // se revela para que el admin pueda copiarla y dársela al usuario
+
+        // Intenta copiarla al portapapeles como ayuda extra
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(pass).catch(() => {});
+        }
+    }
+
+    // Muestra/oculta manualmente el contenido del campo de contraseña
+    function togglePasswordVisible() {
+        const campo = document.getElementById('campo-password');
+        campo.type = campo.type === 'password' ? 'text' : 'password';
+    }
+
     // Mostrar/ocultar campo departamento según el rol seleccionado
     document.querySelector('select[name="role"]').addEventListener('change', function() {
         const campoDpto = document.getElementById('campo-departamento');
         campoDpto.style.display = this.value === 'tecnico' ? 'block' : 'none';
+
+        // El Administrador ve todas las propiedades: no necesita elegir una
+        const campoHotel = document.getElementById('campo-hotel');
+        campoHotel.style.display = this.value === 'admin' ? 'none' : 'block';
     });
 </script>
 @endsection

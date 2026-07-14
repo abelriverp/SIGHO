@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Area;
+use App\Models\Departamento;
+use App\Models\Ticket;
 use App\Models\Modulo;
+use App\Models\Hotel;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,12 +18,15 @@ class AdminSettingsController extends Controller
     // MÓDULO DE USUARIOS
     // =====================================
     public function usersIndex() {
-        $users = User::latest()->get();
+        // Nota: User no lleva el scope de propiedad (no usa BelongsToHotel),
+        // por eso ->with('hotel') es una simple relación, no un filtro.
+        $users = User::with('hotel')->latest()->get();
         return view('admin.users.index', compact('users'));
     }
 
     public function usersCreate() {
-        return view('admin.users.form');
+        $hoteles = Hotel::orderBy('nombre')->get();
+        return view('admin.users.form', compact('hoteles'));
     }
 
     public function usersStore(Request $request) {
@@ -28,18 +35,28 @@ class AdminSettingsController extends Controller
             'email'        => 'required|email|unique:users,email',
             'password'     => 'required|string|min:6',
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
-            'departamento' => 'nullable|string|required_if:role,tecnico',
+            'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
+            'hotel_code'   => 'nullable|string|required_unless:role,admin|exists:hoteles,hotel_code',
         ]);
 
         $data['must_change_password'] = true;
 
-        User::create($data);
-        
+        $user = User::create($data);
+
+        AuditLog::registrar(
+            'usuario.creado',
+            "Creó al usuario \"{$user->name}\" ({$user->email}) con rol {$user->role}.",
+            $user,
+            null,
+            $user->only(['name', 'email', 'role', 'hotel_code', 'departamento'])
+        );
+
         return redirect()->route('admin.users.index')->with('success', 'Usuario creado correctamente.');
     }
 
     public function usersEdit(User $user) {
-        return view('admin.users.form', compact('user'));
+        $hoteles = Hotel::orderBy('nombre')->get();
+        return view('admin.users.form', compact('user', 'hoteles'));
     }
 
     public function usersUpdate(Request $request, User $user) {
@@ -47,20 +64,58 @@ class AdminSettingsController extends Controller
             'name'         => 'required|string|max:255',
             'email'        => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
-            'departamento' => 'nullable|string|required_if:role,tecnico',
-            'password'     => 'nullable|string|min:6'
+            'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
+            'password'     => 'nullable|string|min:6',
+            'hotel_code'   => 'nullable|string|required_unless:role,admin|exists:hoteles,hotel_code',
         ]);
-        
+
+        // Snapshot ANTES de aplicar los cambios, para la bitácora.
+        $antes = $user->only(['name', 'email', 'role', 'hotel_code', 'departamento']);
+        $cambioPassword = ! empty($data['password']);
+
         if ($data['role'] !== 'tecnico') {
             $data['departamento'] = null;
         }
 
+        // El Administrador tiene acceso a todas las propiedades: no necesita
+        // una asignación fija, así que no la forzamos a null si ya tenía una
+        // (permite degradar de admin a otro rol sin perder su propiedad previa).
+        if ($data['role'] === 'admin' && empty($data['hotel_code'])) {
+            unset($data['hotel_code']);
+        }
+
         if (empty($data['password'])) {
             unset($data['password']);
+        } else {
+            // Si el admin le asigna una nueva contraseña, se le exige
+            // cambiarla en su próximo inicio de sesión.
+            $data['must_change_password'] = true;
         }
 
         $user->update($data);
-        
+
+        $despues = $user->fresh()->only(['name', 'email', 'role', 'hotel_code', 'departamento']);
+
+        $notas = [];
+        if ($antes['role'] !== $despues['role']) {
+            $notas[] = "rol de \"{$antes['role']}\" a \"{$despues['role']}\"";
+        }
+        if ($antes['hotel_code'] !== $despues['hotel_code']) {
+            $notas[] = "propiedad de \"" . ($antes['hotel_code'] ?? 'ninguna') . "\" a \"" . ($despues['hotel_code'] ?? 'ninguna') . "\"";
+        }
+        if ($cambioPassword) {
+            $notas[] = 'se le asignó una nueva contraseña';
+        }
+        $detalle = $notas ? ('Cambió ' . implode(', ', $notas) . '.') : 'Actualizó datos generales.';
+
+        AuditLog::registrar(
+            'usuario.actualizado',
+            "Editó al usuario \"{$user->name}\" ({$user->email}). {$detalle}",
+            $user,
+            $antes,
+            $despues
+        );
+
         return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado correctamente.');
     }
 
@@ -68,6 +123,17 @@ class AdminSettingsController extends Controller
         if ($user->id === auth()->id()) {
             return back()->with('error', 'No puedes eliminar tu propia cuenta mientras estés en sesión.');
         }
+
+        // Snapshot antes de borrar: después ya no habrá registro del usuario.
+        $datosPrevios = $user->only(['name', 'email', 'role', 'hotel_code', 'departamento']);
+
+        AuditLog::registrar(
+            'usuario.eliminado',
+            "Eliminó al usuario \"{$user->name}\" ({$user->email}).",
+            $user,
+            $datosPrevios,
+            null
+        );
 
         $user->delete();
         return back()->with('success', 'Usuario eliminado correctamente.');
@@ -85,6 +151,8 @@ class AdminSettingsController extends Controller
     public function usersModulosUpdate(Request $request, User $user) {
         $modulos = $request->input('modulos', []);
 
+        $antes = $user->modulos()->pluck('clave')->sort()->values()->all();
+
         // sync reemplaza todo lo que había (quita los desmarcados, agrega los nuevos)
         $user->modulos()->sync(
             collect($modulos)->mapWithKeys(fn($id) => [
@@ -93,6 +161,16 @@ class AdminSettingsController extends Controller
                     'activado_por' => auth()->id(),
                 ]
             ])->toArray()
+        );
+
+        $despues = $user->modulos()->pluck('clave')->sort()->values()->all();
+
+        AuditLog::registrar(
+            'usuario.modulos_actualizados',
+            "Actualizó los módulos habilitados para \"{$user->name}\" ({$user->email}).",
+            $user,
+            ['modulos' => $antes],
+            ['modulos' => $despues]
         );
 
         return redirect()->route('admin.users.index')
@@ -141,4 +219,85 @@ class AdminSettingsController extends Controller
         $area->delete();
         return back()->with('success', 'Área eliminada correctamente.');
     }
-}
+
+    // =====================================
+    // MÓDULO DE DEPARTAMENTOS (destino de tickets)
+    // =====================================
+    // Catálogo de departamentos a los que se les puede levantar/asignar un
+    // ticket (ej. Sistemas, Mantenimiento, Prevención...). El mismo catálogo
+    // se usa para elegir el departamento que atiende cada usuario técnico,
+    // así ambos siempre coinciden.
+    public function departamentosIndex() {
+        // "departamento_destino" (en tickets) y "departamento" (en usuarios) se
+        // guardan como texto, no como llave foránea, así que el conteo de uso
+        // se calcula agrupando por nombre en vez de con una relación Eloquent.
+        $usoTickets = Ticket::select('departamento_destino')
+            ->selectRaw('count(*) as total')
+            ->groupBy('departamento_destino')
+            ->pluck('total', 'departamento_destino');
+
+        $usoUsuarios = User::whereNotNull('departamento')
+            ->select('departamento')
+            ->selectRaw('count(*) as total')
+            ->groupBy('departamento')
+            ->pluck('total', 'departamento');
+
+        $departamentos = Departamento::latest()->get()->map(function ($d) use ($usoTickets, $usoUsuarios) {
+            $d->tickets_count  = $usoTickets[$d->nombre] ?? 0;
+            $d->usuarios_count = $usoUsuarios[$d->nombre] ?? 0;
+            return $d;
+        });
+
+        return view('admin.departamentos.index', compact('departamentos'));
+    }
+
+    public function departamentosCreate() {
+        return view('admin.departamentos.form');
+    }
+
+    public function departamentosStore(Request $request) {
+        $data = $request->validate([
+            'nombre' => 'required|string|max:255|unique:departamentos,nombre',
+            'activo' => 'nullable|boolean',
+        ]);
+        // Checkbox HTML: si no viene marcado, el navegador no manda el campo
+        // (no llega "activo=0"), así que su ausencia significa "desmarcado".
+        $data['activo'] = $request->boolean('activo');
+
+        $departamento = Departamento::create($data);
+
+        AuditLog::registrar(
+            'departamento.creado',
+            "Creó el departamento \"{$departamento->nombre}\".",
+            $departamento,
+            null,
+            $departamento->only(['nombre', 'activo'])
+        );
+
+        return redirect()->route('admin.departamentos.index')->with('success', 'Departamento agregado correctamente.');
+    }
+
+    public function departamentosEdit($id) {
+        $departamento = Departamento::findOrFail($id);
+        return view('admin.departamentos.form', compact('departamento'));
+    }
+
+    public function departamentosUpdate(Request $request, $id) {
+        $departamento = Departamento::findOrFail($id);
+
+        $data = $request->validate([
+            'nombre' => ['required', 'string', 'max:255', Rule::unique('departamentos', 'nombre')->ignore($departamento->id)],
+            'activo' => 'nullable|boolean',
+        ]);
+        $data['activo'] = $request->boolean('activo');
+
+        $antes = $departamento->only(['nombre', 'activo']);
+        $nombreAnterior = $departamento->nombre;
+
+        $departamento->update($data);
+
+        // Si el nombre cambió, actualizamos las referencias existentes (tickets
+        // y usuarios guardan el nombre como texto, no como llave foránea) para
+        // que no queden "huérfanas" apuntando al nombre viejo.
+        if ($nombreAnterior !== $departamento->nombre) {
+            T

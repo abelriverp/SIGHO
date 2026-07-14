@@ -4,66 +4,92 @@ namespace App\Http\Controllers;
 
 use App\Models\HabitacionActivo;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Concerns\ResuelveHotelActivo;
 
 class HabitacionActivoController extends Controller
 {
-    // Vista principal: Lista por pisos (DINÁMICA)
+    use ResuelveHotelActivo;
+
+    /**
+     * Vista principal: Lista habitaciones del hotel activo, agrupadas por piso (dinámico).
+     * Un solo query, sin límite de pisos.
+     */
     public function index()
     {
-        // Traemos todas las habitaciones ordenadas y las agrupamos por piso en memoria
-        // Esto reduce las consultas a la base de datos a SOLO UNA, sin importar cuántos pisos existan.
-        $habitacionesPorPiso = HabitacionActivo::orderBy('numero_habitacion')->get()->groupBy('piso');
+        $hotelCode = $this->hotelActivo();
 
-        // Nota: En tu vista Blade ahora puedes iterar sobre $habitacionesPorPiso.
-        // O si tu Blade actual depende estrictamente de $piso1, $piso2... las extraemos así para no romper tu vista:
-        $piso1 = $habitacionesPorPiso->get(1, collect());
-        $piso2 = $habitacionesPorPiso->get(2, collect());
-        $piso3 = $habitacionesPorPiso->get(3, collect());
-        $piso4 = $habitacionesPorPiso->get(4, collect());
+        $habitacionesPorPiso = HabitacionActivo::where('hotel_code', $hotelCode)
+            ->orderBy('numero_habitacion')
+            ->get()
+            ->groupBy('piso')
+            ->sortKeys(); // Pisos en orden ascendente (1, 2, 3... N)
 
-        return view('inventory.habitaciones', compact('piso1', 'piso2', 'piso3', 'piso4', 'habitacionesPorPiso'));
+        return view('inventory.habitaciones', compact('habitacionesPorPiso', 'hotelCode'));
     }
 
-    // Guardar una nueva habitación
+    /**
+     * Reglas de validación compartidas para campos técnicos.
+     */
+    private function reglasCampos(): array
+    {
+        return [
+            'ap_modelo'             => 'nullable|string|max:255',
+            'ap_serie'              => 'nullable|string|max:255',
+            'ap_mac'                => 'nullable|string|max:255',
+            'ap_ip'                 => 'nullable|string|max:255',
+            'tv_marca'              => 'nullable|string|max:255',
+            'tv_modelo'             => 'nullable|string|max:255',
+            'tv_serie'              => 'nullable|string|max:255',
+            'tv_pulgadas'           => 'nullable|string|max:10',
+            'control_remoto_estado' => 'nullable|in:Funciona,Dañado,Extraviado',
+            'control_serie'         => 'nullable|string|max:255',
+            'caja_fuerte_modelo'    => 'nullable|string|max:255',
+            'caja_fuerte_serie'     => 'nullable|string|max:255',
+            'caja_fuerte_bateria'   => 'nullable|string|max:255',
+            'notas_tecnicas'        => 'nullable|string',
+        ];
+    }
+
+    /**
+     * Guardar una nueva habitación ligada al hotel activo.
+     * La unicidad de numero_habitacion se valida dentro del mismo hotel.
+     */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            // 🛠️ ATENCIÓN: Cambia 'habitaciones_activos' por el nombre real de tu tabla si es distinto
-            'numero_habitacion' => 'required|unique:habitaciones_activos,numero_habitacion',
-            'piso' => 'required|integer',
-            'ap_modelo' => 'nullable|string',
-            'ap_serie' => 'nullable|string',
-            'ap_mac' => 'nullable|string',
-            'tv_modelo' => 'nullable|string',
-            'tv_serie' => 'nullable|string',
-            'control_serie' => 'nullable|string',
-            'caja_fuerte_serie' => 'nullable|string',
-        ]);
+        $hotelCode = $this->hotelActivo();
+
+        $data = $request->validate(array_merge([
+            'numero_habitacion' => [
+                'required', 'string', 'max:50',
+                \Illuminate\Validation\Rule::unique('habitacion_activos', 'numero_habitacion')
+                    ->where('hotel_code', $hotelCode),
+            ],
+            'piso' => 'required|integer|min:1',
+        ], $this->reglasCampos()));
+
+        $data['hotel_code'] = $hotelCode;
 
         HabitacionActivo::create($data);
-        return back()->with('success', 'Habitación registrada correctamente.');
+
+        return back()->with('success', 'Habitación #' . $data['numero_habitacion'] . ' registrada correctamente.');
     }
 
-    // Actualizar datos técnicos de una habitación
+    /**
+     * Actualizar datos técnicos de una habitación.
+     * Verifica que la habitación pertenezca al hotel activo antes de editar.
+     */
     public function update(Request $request, $id)
     {
-        $hab = HabitacionActivo::findOrFail($id);
+        $hotelCode = $this->hotelActivo();
 
-        // 🔒 Validamos los datos permitidos para la actualización en lugar de usar $request->all()
-        $data = $request->validate([
-            'ap_modelo' => 'nullable|string',
-            'ap_serie' => 'nullable|string',
-            'ap_mac' => 'nullable|string',
-            'tv_modelo' => 'nullable|string',
-            'tv_serie' => 'nullable|string',
-            'control_serie' => 'nullable|string',
-            'caja_fuerte_serie' => 'nullable|string',
-            'notas_tecnicas' => 'nullable|string',
-            // Si permites cambiar de piso o número, añádelos aquí con sus reglas
-        ]);
+        $hab = HabitacionActivo::where('id', $id)
+            ->where('hotel_code', $hotelCode)
+            ->firstOrFail();
+
+        $data = $request->validate($this->reglasCampos());
 
         $hab->update($data);
-        
+
         return back()->with('success', 'Inventario de la habitación #' . $hab->numero_habitacion . ' actualizado.');
     }
 }

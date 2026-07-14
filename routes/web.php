@@ -2,10 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
-    AuthController, AssetController, RevisionController, 
-    InventoryController, NetworkController, PeripheralController, 
+    AuthController, AssetController, RevisionController,
+    InventoryController, NetworkController, PeripheralController,
     TicketController, AdminSettingsController, HabitacionActivoController,
-    ProfileController, DashboardController
+    ActivoPlantillaController, ActivoItemController,
+    ProfileController, DashboardController,
+    UnidadController, CondominoController, EstanciaController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -13,7 +15,7 @@ use App\Http\Middleware\CheckAdmin;
 // 🌐 RUTAS PÚBLICAS (ACCESO LIBRE)
 // ==========================================
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // ==========================================
@@ -41,10 +43,21 @@ Route::middleware('auth')->group(function () {
     // 🛡️ MÓDULOS DEL SISTEMA
     // ==========================================
 
-    Route::middleware(['modulo:inventario_habitaciones'])->prefix('inventario')->group(function () {
-        Route::get('/', [HabitacionActivoController::class, 'index'])->name('habitaciones.index');
-        Route::post('/habitaciones', [HabitacionActivoController::class, 'store'])->name('habitaciones.store');
-        Route::put('/habitaciones/{id}', [HabitacionActivoController::class, 'update'])->name('habitaciones.update');
+    // Módulo legacy (habitaciones fijas) — se mantiene para no romper datos existentes
+    Route::middleware(['modulo:inventario_habitaciones'])->prefix('inventario')->name('habitaciones.')->group(function () {
+        Route::get('/habitaciones-legacy', [HabitacionActivoController::class, 'index'])->name('index');
+        Route::post('/habitaciones', [HabitacionActivoController::class, 'store'])->name('store');
+        Route::put('/habitaciones/{id}', [HabitacionActivoController::class, 'update'])->name('update');
+    });
+
+    // Módulo nuevo: Activos multi-área con plantillas dinámicas
+    Route::middleware(['modulo:inventario_habitaciones'])->prefix('inventario')->name('activos.')->group(function () {
+        Route::get('/', [ActivoItemController::class, 'index'])->name('index');
+        Route::post('/activos', [ActivoItemController::class, 'store'])->name('store');
+        Route::put('/activos/{id}', [ActivoItemController::class, 'update'])->name('update');
+        Route::delete('/activos/{id}', [ActivoItemController::class, 'destroy'])->name('destroy');
+        // Endpoint AJAX para obtener campos de una plantilla
+        Route::get('/activos/plantilla/{id}', [ActivoItemController::class, 'plantillaJson'])->name('plantilla.json');
     });
 
     Route::middleware(['modulo:seguimiento_equipos_ti'])->group(function () {
@@ -52,6 +65,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/seguimiento/crear', [AssetController::class, 'create'])->name('assets.create');
         Route::get('/assets/perifericos', [AssetController::class, 'perifericos'])->name('assets.perifericos');
         Route::get('/assets/exportar', [AssetController::class, 'exportExcel'])->name('assets.export');
+        Route::post('/assets/importar-excel', [AssetController::class, 'importExcel'])->name('assets.import');
+        Route::patch('/assets/{id}/division', [AssetController::class, 'cambiarDivision'])->name('assets.division');
+        Route::post('/assets/mover-lote', [AssetController::class, 'moverLote'])->name('assets.moverLote');
         Route::resource('assets', AssetController::class)->except(['index', 'create']);
 
         Route::get('assets/{asset}/revisions/create', [RevisionController::class, 'create'])->name('revisions.create');
@@ -60,8 +76,22 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware(['modulo:inventario_suministros'])->group(function () {
+        Route::get('inventory/reportes', [InventoryController::class, 'reportes'])->name('inventory.reportes');
         Route::resource('inventory', InventoryController::class);
         Route::post('inventory/{inventory}/movimiento', [InventoryController::class, 'registrarMovimiento'])->name('inventory.movimiento');
+    });
+
+    Route::middleware(['modulo:condominios_checkin'])->prefix('condominios')->name('condominios.')->group(function () {
+        // Reportes y estancias (check-in/check-out) van primero para no chocar con los resource
+        Route::get('/reportes', [EstanciaController::class, 'reportes'])->name('reportes');
+
+        Route::resource('estancias', EstanciaController::class)->only(['index', 'create', 'store', 'show']);
+        Route::post('estancias/{estancia}/checkin', [EstanciaController::class, 'checkin'])->name('estancias.checkin');
+        Route::post('estancias/{estancia}/checkout', [EstanciaController::class, 'checkout'])->name('estancias.checkout');
+        Route::post('estancias/{estancia}/cancelar', [EstanciaController::class, 'cancelar'])->name('estancias.cancelar');
+
+        Route::resource('unidades', UnidadController::class)->except(['show']);
+        Route::resource('condominos', CondominoController::class);
     });
 
     Route::middleware(['modulo:red_infraestructura'])->group(function () {
@@ -75,11 +105,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [TicketController::class, 'store'])->name('store');
         Route::get('/{id}', [TicketController::class, 'show'])->name('show');
         Route::match(['PUT', 'PATCH'], '/{id}/resolver', [TicketController::class, 'resolve'])->name('resolve');
+        Route::patch('/{id}/reasignar', [TicketController::class, 'reasignar'])->name('reasignar');
         Route::get('/{id}/descargar', [TicketController::class, 'downloadPDF'])->name('download');
         Route::post('/{id}/confirmar', [TicketController::class, 'confirmar'])->name('confirmar');
         Route::post('/{id}/reabrir', [TicketController::class, 'reabrir'])->name('reabrir');
+        Route::patch('/{id}/deshacer-resolucion', [TicketController::class, 'deshacerResolucion'])->name('deshacer-resolucion');
         Route::post('/{id}/notas', [TicketController::class, 'agregarNota'])->name('notas.store');
         Route::patch('/{ticket}/notas/{nota}/edit', [TicketController::class, 'editarNota'])->name('notas.edit');
+        Route::delete('/{id}', [TicketController::class, 'destroy'])->name('destroy');
     });
 
     // ==========================================
@@ -101,5 +134,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/areas/{id}/editar', [AdminSettingsController::class, 'areasEdit'])->name('areas.edit');
         Route::put('/areas/{id}', [AdminSettingsController::class, 'areasUpdate'])->name('areas.update');
         Route::delete('/areas/{id}', [AdminSettingsController::class, 'areasDestroy'])->name('areas.destroy');
-    });
-});
+
+        Route::get('/departamentos', [AdminSettingsController::class, 'departamentosIndex'])->name('departamentos.index');
+        Route::get('/departamentos/crear', [AdminSettingsController::class, 'departamentosCreate'])->name('departamentos.create');
+        Route::post('/departamentos', [AdminSettingsController::class, 'departamentosStore'])->name('departamentos.store');
+        Route::get('/departamentos/{id}/editar', [AdminSettingsController::class, 'departamentosEdit'])->name('departamentos.edit');
+        Route::put('/departamentos/{id}', [AdminSettingsController::class, 'departamentosUpdate'])->name('departamentos.update');
+        Route::delete('/departamentos/{id}', [AdminSettingsController::class, 'departamentosDestroy'])->name('departamentos.destroy');
+
+        Route::get('/propiedades', [AdminSettingsController::class, 'hotelesIndex'])->name('hoteles.index');
+        Route::get('/propiedades/crear', [AdminSettingsController::class, 'hotelesCreate'])->name('hoteles.create');
+   

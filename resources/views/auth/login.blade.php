@@ -18,7 +18,7 @@
         <img src="{{ asset('img/logo.jpg') }}" alt="Logo Hotel" class="w-40 h-auto object-contain">
         </div>
         <h1 class="text-4xl font-bold tracking-[0.2em] uppercase mb-2">Mazatlán</h1>
-        <p class="text-sm opacity-70 tracking-widest">SISTEMA DE GESTIÓN TI</p>
+        <p class="text-sm opacity-70 tracking-widest">SISTEMA DE GESTIÓN HOTELERA</p>
         </div>
 
         <div class="w-1/2 p-12 flex flex-col justify-center">

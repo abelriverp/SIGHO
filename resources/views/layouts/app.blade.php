@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema TI - Hotel Emporio</title>
+    <title>SIGHO - Hotel Emporio</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <style>
         .hotel-blue { background-color: #041b32; }
         .nav-link:hover { color: #94a3b8; }
         .active-link { color: #60a5fa; }
         @media print { .no-print { display: none !important; } }
+        [x-cloak] { display: none !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-slate-800">
@@ -30,20 +32,22 @@
                         @php
                             $user = auth()->user();
 
-                            // Stock bajo para badge de inventario
-                            $bajoStockCount = 0;
-                            if ($user->tieneModulo('inventario_suministros')) {
-                                try {
-                                    $bajoStockCount = \Illuminate\Support\Facades\DB::table('inventario_items')
-                                        ->where('hotel_code', env('HOTEL_CODE', 'MAZ'))
-                                        ->where('stock_minimo', '>', 0)
-                                        ->whereColumn('cantidad', '<=', 'stock_minimo')
-                                        ->count();
-                                } catch (\Exception $e) {
-                                    $bajoStockCount = 0;
-                                }
+                            // Alertas proactivas (stock bajo + tickets vencidos), ya filtradas
+                            // por propiedad (HotelScope) y por lo que este usuario puede ver.
+                            $alertas = [];
+                            try {
+                                $alertas = app(\App\Services\AlertasService::class)->resumen($user);
+                            } catch (\Exception $e) {
+                                $alertas = ['stock_bajo' => collect(), 'stock_bajo_count' => 0, 'tickets_vencidos' => collect(), 'tickets_vencidos_count' => 0];
                             }
+                            $bajoStockCount = $alertas['stock_bajo_count'] ?? 0;
+                            $totalAlertas = $bajoStockCount + ($alertas['tickets_vencidos_count'] ?? 0);
                         @endphp
+
+                        {{-- 0. DASHBOARD --}}
+                        <a href="{{ route('dashboard') }}" class="flex items-center gap-1 nav-link py-4 {{ request()->routeIs('dashboard') ? 'text-blue-400' : 'hover:text-blue-400' }} transition">
+                            Dashboard
+                        </a>
 
                         {{-- 1. SEGUIMIENTO --}}
                         @if($user->tieneModulo('seguimiento_equipos_ti'))
@@ -53,7 +57,7 @@
                                 <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </a>
                             <div class="absolute left-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
-                                <a href="{{ route('assets.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Equipos TI</a>
+                                <a href="{{ route('assets.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Equipos</a>
                                 <a href="{{ route('assets.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nuevo Equipo</a>
                             </div>
                         </div>
@@ -74,6 +78,7 @@
                             <div class="absolute left-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
                                 <a href="{{ route('inventory.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Suministros</a>
                                 <a href="{{ route('inventory.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nuevo Artículo</a>
+                                <a href="{{ route('inventory.reportes') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📊 Reportes</a>
                             </div>
                         </div>
                         @endif
@@ -106,21 +111,36 @@
                         </div>
                         @endif
 
-                        {{-- 5. HABITACIONES --}}
+                        {{-- 5. ACTIVOS POR ÁREA --}}
                         @if($user->tieneModulo('inventario_habitaciones'))
                         <div class="relative group">
-                            <a href="{{ route('habitaciones.index') }}" class="flex items-center gap-1 nav-link py-4 {{ request()->routeIs('habitaciones.*') ? 'text-blue-400' : 'hover:text-blue-400' }} transition">
-                                Habitaciones
+                            <a href="{{ route('activos.index') }}" class="flex items-center gap-1 nav-link py-4 {{ request()->routeIs('activos.*') ? 'text-blue-400' : 'hover:text-blue-400' }} transition">
+                                Activos
                                 <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </a>
-                            <div class="absolute left-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
-                                <a href="{{ route('habitaciones.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Inventario (Pisos)</a>
-                                <a href="#" onclick="abrirModalCrear()" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nueva Habitación</a>
+                            <div class="absolute left-0 top-full w-52 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
+                                <a href="{{ route('activos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Inventario por Área</a>
                             </div>
                         </div>
                         @endif
 
-                        {{-- 6. ADMIN (solo administradores) --}}
+                        {{-- 6. CONDOMINIOS / CHECK-IN --}}
+                        @if($user->tieneModulo('condominios_checkin'))
+                        <div class="relative group">
+                            <a href="{{ route('condominios.estancias.index') }}" class="flex items-center gap-1 nav-link py-4 {{ request()->routeIs('condominios.*') ? 'text-blue-400' : 'hover:text-blue-400' }} transition">
+                                Condominios
+                                <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </a>
+                            <div class="absolute left-0 top-full w-52 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
+                                <a href="{{ route('condominios.estancias.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Check-in / Estancias</a>
+                                <a href="{{ route('condominios.unidades.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Unidades</a>
+                                <a href="{{ route('condominios.condominos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Condóminos</a>
+                                <a href="{{ route('condominios.reportes') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📊 Reportes</a>
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- 7. ADMIN (solo administradores) --}}
                         @if($user->isAdmin())
                         <div class="relative group">
                             <a href="{{ route('admin.users.index') }}" class="flex items-center gap-1 nav-link py-4 {{ request()->routeIs('admin.*') ? 'text-blue-400' : 'hover:text-blue-400' }} transition">
@@ -129,23 +149,19 @@
                             </a>
                             <div class="absolute right-0 md:left-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
                                 <a href="{{ route('admin.users.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Usuarios y Roles</a>
+                                <a href="{{ route('admin.hoteles.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">🏨 Propiedades</a>
                                 <a href="{{ route('admin.areas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Catálogo de Áreas</a>
+                                <a href="{{ route('admin.departamentos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Departamentos (Tickets)</a>
+                                <a href="{{ route('admin.activo-plantillas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Áreas de Activos</a>
+                                <a href="{{ route('admin.auditoria.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📋 Bitácora</a>
                             </div>
                         </div>
                         @endif
 
                         {{-- TICKETS (libre para todos los usuarios autenticados) --}}
                         @php
-                            $ticketBadgeCount = 0;
                             try {
-                                if ($user->isAdmin() || $user->puedeVerTodos()) {
-                                    $ticketBadgeCount = \Illuminate\Support\Facades\DB::table('tickets')->where('status', 'Abierto')->count();
-                                } elseif ($user->role === 'tecnico') {
-                                    $ticketBadgeCount = \Illuminate\Support\Facades\DB::table('tickets')
-                                        ->where('status', 'Abierto')
-                                        ->where('departamento_destino', $user->departamento)
-                                        ->count();
-                                }
+                                $ticketBadgeCount = app(\App\Services\AlertasService::class)->ticketsAbiertosCount($user);
                             } catch (\Exception $e) {
                                 $ticketBadgeCount = 0;
                             }
@@ -170,7 +186,45 @@
                     </div>
 
                     @auth
-                        <div class="border-l border-[#0a2f57] pl-4 ml-1">
+                        <div class="border-l border-[#0a2f57] pl-4 ml-1 flex items-center gap-4">
+                            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                                <button @click="open = !open" type="button" class="relative flex items-center text-lg hover:text-blue-300 transition" title="Alertas">
+                                    🔔
+                                    @if($totalAlertas > 0)
+                                        <span class="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold">
+                                            {{ $totalAlertas > 99 ? '99+' : $totalAlertas }}
+                                        </span>
+                                    @endif
+                                </button>
+                                <div x-show="open" x-cloak class="absolute right-0 top-full mt-2 w-80 bg-white shadow-lg rounded-lg border-t-2 border-[#041b32] z-50 text-slate-600 normal-case max-h-96 overflow-y-auto">
+                                    <div class="px-4 py-2 font-bold text-[#041b32] border-b border-gray-100 uppercase text-xs tracking-wide">Alertas</div>
+
+                                    @if($totalAlertas === 0)
+                                        <div class="px-4 py-6 text-center text-sm text-slate-400">Sin pendientes por ahora.</div>
+                                    @endif
+
+                                    @if(($alertas['stock_bajo_count'] ?? 0) > 0)
+                                        <div class="px-4 pt-3 pb-1 text-xs font-bold text-slate-500 uppercase">Stock bajo ({{ $alertas['stock_bajo_count'] }})</div>
+                                        @foreach($alertas['stock_bajo'] as $item)
+                                            <a href="{{ route('inventory.index') }}" class="block px-4 py-2 hover:bg-blue-50 text-sm border-t border-gray-50">
+                                                <span class="font-semibold">{{ $item->nombre }}</span>
+                                                <span class="text-slate-400"> — {{ $item->cantidad }} / mín. {{ $item->stock_minimo }}</span>
+                                            </a>
+                                        @endforeach
+                                    @endif
+
+                                    @if(($alertas['tickets_vencidos_count'] ?? 0) > 0)
+                                        <div class="px-4 pt-3 pb-1 text-xs font-bold text-slate-500 uppercase">Tickets vencidos ({{ $alertas['tickets_vencidos_count'] }})</div>
+                                        @foreach($alertas['tickets_vencidos'] as $ticket)
+                                            <a href="{{ route('tickets.show', $ticket->id) }}" class="block px-4 py-2 hover:bg-blue-50 text-sm border-t border-gray-50">
+                                                <span class="font-semibold">#{{ $ticket->id }} · {{ $ticket->area }}</span>
+                                                <span class="text-slate-400"> — {{ $ticket->prioridad }}, abierto desde {{ $ticket->created_at->diffForHumans() }}</span>
+                                            </a>
+                                        @endforeach
+                                    @endif
+                                </div>
+                            </div>
+
                             <form action="{{ route('logout') }}" method="POST" class="inline">
                                 @csrf
                                 <button type="submit" class="text-[13px] uppercase hover:text-gray-300 transition bg-transparent border-0 cursor-pointer font-bold">Salir</button>

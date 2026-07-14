@@ -115,4 +115,24 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | Sin este bloque, Laravel ignora por completo las plantillas de correo
+    | personalizadas en resources/views/vendor/mail (incluyendo el header con
+    | el logo embebido por CID) y usa las plantillas genéricas del framework.
+    | Esto es lo que causaba que el logo no apareciera en los correos.
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'default',
+
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
 ];

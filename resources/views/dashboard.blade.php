@@ -6,16 +6,16 @@
     <div class="md:flex md:items-center md:justify-between mb-8">
         <div class="min-w-0 flex-1">
             <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl tracking-tight">
-                Panel de Control — SIGHO <span class="text-sm font-normal text-gray-500">v1.2</span>
+                Panel de Control — SIGHO <span class="text-sm font-normal text-gray-500">v1.5</span>
             </h2>
             <p class="text-sm text-gray-500 mt-1">
-                Monitoreo general de infraestructura y servicios de TI para la propiedad: 
+                Monitoreo general de operaciones y servicios para la propiedad:
                 <span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 uppercase">{{ $hotelActivo }}</span>
             </p>
         </div>
     </div>
 
-    @if($suministrosBajos > 0)
+    @if($suministrosBajos > 0 && auth()->user()->tieneModulo('inventario_suministros'))
         <div class="mb-6 rounded-md bg-amber-50 p-4 border border-amber-200 shadow-sm animate-pulse">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -26,11 +26,11 @@
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-amber-800">Atención: Alerta de Inventario</h3>
                     <div class="mt-1 text-sm text-amber-700">
-                        <p>Existen <strong>{{ $suministrosBajos }}</strong> artículos de insumos de TI que han alcanzado o superado el stock mínimo permitido.</p>
+                        <p>Existen <strong>{{ $suministrosBajos }}</strong> artículos que han alcanzado o superado el stock mínimo permitido.</p>
                     </div>
                     <div class="mt-2 text-sm">
                         <a href="{{ route('inventory.index') }}" class="font-medium text-amber-800 underline hover:text-amber-900">
-                            Ver suministros críticos &rarr;
+                            Ver artículos críticos &rarr;
                         </a>
                     </div>
                 </div>
@@ -60,6 +60,7 @@
             </dd>
         </div>
 
+        @if(auth()->user()->tieneModulo('inventario_suministros'))
         <div class="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow sm:px-6 sm:pt-6 border border-gray-100">
             <dt>
                 <div class="absolute rounded-md {{ $suministrosBajos > 0 ? 'bg-amber-500' : 'bg-emerald-500' }} p-3 text-white">
@@ -67,7 +68,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                     </svg>
                 </div>
-                <p class="ml-16 truncate text-sm font-medium text-gray-500">Alertas de Suministros</p>
+                <p class="ml-16 truncate text-sm font-medium text-gray-500">Alertas de Inventario</p>
             </dt>
             <dd class="ml-16 flex items-baseline pb-6 sm:pb-7">
                 <p class="text-2xl font-semibold {{ $suministrosBajos > 0 ? 'text-amber-600' : 'text-gray-900' }}">{{ $suministrosBajos }}</p>
@@ -79,7 +80,9 @@
                 </div>
             </dd>
         </div>
+        @endif
 
+        @if(auth()->user()->tieneModulo('seguimiento_equipos_ti'))
         <div class="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow sm:px-6 sm:pt-6 border border-gray-100">
             <dt>
                 <div class="absolute rounded-md bg-blue-500 p-3 text-white">
@@ -94,11 +97,12 @@
                 <p class="ml-2 text-xs text-gray-400">monitoreados actualmente</p>
                 <div class="absolute inset-x-0 bottom-0 bg-gray-50 px-4 py-4 sm:px-6">
                     <div class="text-sm">
-                        <a href="{{ route('assets.index') }}" class="font-medium text-indigo-600 hover:text-indigo-500">Ver lista de hardware</a>
+                        <a href="{{ route('assets.index') }}" class="font-medium text-indigo-600 hover:text-indigo-500">Ver lista de equipos</a>
                     </div>
                 </div>
             </dd>
         </div>
+        @endif
 
     </div>
 
@@ -156,7 +160,7 @@
             <nav class="space-y-2" aria-label="Sidebar">
                 @php
                     $modulosConfig = [
-                        ['id' => 'seguimiento_equipos_ti', 'name' => 'Equipos TI', 'route' => 'assets.index', 'bg' => 'bg-blue-50 text-blue-700'],
+                        ['id' => 'seguimiento_equipos_ti', 'name' => 'Seguimiento de Equipos', 'route' => 'assets.index', 'bg' => 'bg-blue-50 text-blue-700'],
                         ['id' => 'inventario_suministros', 'name' => 'Suministros', 'route' => 'inventory.index', 'bg' => 'bg-emerald-50 text-emerald-700'],
                         ['id' => 'red_infraestructura', 'name' => 'Red e Infraestructura', 'route' => 'network.index', 'bg' => 'bg-purple-50 text-purple-700'],
                         ['id' => 'perifericos', 'name' => 'Periféricos', 'route' => 'assets.perifericos', 'bg' => 'bg-pink-50 text-pink-700'],

@@ -12,8 +12,8 @@ class ModulosSeeder extends Seeder
         $modulos = [
             [
                 'clave'       => 'seguimiento_equipos_ti',
-                'nombre'      => 'Seguimiento de Equipos TI',
-                'descripcion' => 'Inventario y seguimiento de equipos de cómputo',
+                'nombre'      => 'Seguimiento de Equipos',
+                'descripcion' => 'Inventario y seguimiento de equipos y activos operativos de cualquier área (cómputo, mantenimiento, aires acondicionados, etc.)',
                 'icono'       => 'desktop-computer',
                 'ruta_base'   => 'assets.index',
                 'activo'      => true,
@@ -64,6 +64,15 @@ class ModulosSeeder extends Seeder
                 'activo'      => true,
                 'orden'       => 6,
             ],
+            [
+                'clave'       => 'condominios_checkin',
+                'nombre'      => 'Condominios / Check-in',
+                'descripcion' => 'Control de unidades, condóminos, reservas y check-in/check-out por propiedad',
+                'icono'       => 'building-office-2',
+                'ruta_base'   => 'condominios.estancias.index',
+                'activo'      => true,
+                'orden'       => 7,
+            ],
         ];
 
         foreach ($modulos as $modulo) {
@@ -75,5 +84,16 @@ class ModulosSeeder extends Seeder
                 ])
             );
         }
+
+        // Cualquier módulo que exista en la base de datos pero ya no esté
+        // en la lista de arriba se considera obsoleto (ej. renombrados o
+        // fusionados con otro, como "Control de Inventario" -> "Inventario
+        // de Suministros"). Se desactiva en vez de borrarse para no romper
+        // los registros históricos de accesos ya otorgados.
+        $clavesVigentes = array_column($modulos, 'clave');
+
+        DB::table('modulos')
+            ->whereNotIn('clave', $clavesVigentes)
+            ->update(['activo' => false, 'updated_at' => now()]);
     }
 }

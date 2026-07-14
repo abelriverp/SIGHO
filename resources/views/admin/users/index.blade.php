@@ -16,6 +16,7 @@
                 <tr>
                     <th class="py-3 px-6">Nombre y Correo</th>
                     <th class="py-3 px-6">Rol</th>
+                    <th class="py-3 px-6">Propiedad</th>
                     <th class="py-3 px-6 text-right">Acciones</th>
                 </tr>
             </thead>
@@ -30,6 +31,15 @@
                         <span class="px-3 py-1 rounded-full text-xs font-bold {{ $user->role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700' }}">
                             {{ strtoupper($user->role) }}
                         </span>
+                    </td>
+                    <td class="py-4 px-6 text-xs">
+                        @if($user->role === 'admin')
+                            <span class="text-purple-600 font-bold">Todas</span>
+                        @elseif($user->hotel)
+                            {{ $user->hotel->nombre }}
+                        @else
+                            <span class="text-red-500 italic">Sin asignar</span>
+                        @endif
                     </td>
                     <td class="py-4 px-6 text-right">
                         <div class="flex justify-end items-center gap-3">

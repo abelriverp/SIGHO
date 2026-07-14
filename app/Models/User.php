@@ -17,7 +17,8 @@ class User extends Authenticatable
         'password',
         'role',
         'departamento',
-        'must_change_password'
+        'must_change_password',
+        'hotel_code',
     ];
 
     protected $hidden = [
@@ -56,6 +57,20 @@ class User extends Authenticatable
     public function isUsuario(): bool
     {
         return $this->role === 'usuario';
+    }
+
+    // ==========================================
+    // MULTIPROPIEDAD
+    // ==========================================
+
+    /**
+     * Propiedad (hotel/condominio) a la que pertenece este usuario.
+     * El Administrador no depende de este dato para ver información:
+     * su rol lo exime del filtro en HotelScope.
+     */
+    public function hotel()
+    {
+        return $this->belongsTo(Hotel::class, 'hotel_code', 'hotel_code');
     }
 
 	public function modulos()

@@ -4,20 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToHotel;
 
 class Ticket extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToHotel;
 
     protected $fillable = [
+        'hotel_code',
         'user_id',
+        'resolved_by',
         'area',
         'departamento_destino',
+        'veces_reasignado',
         'descripcion_ubicacion',
         'descripcion',
+        'campos_extra',
         'prioridad',
         'status',
         'archivo_path',
+        'archivos_evidencia',
         'fotos_resolucion',
         'notas_admin',
         'fecha_resolucion',
@@ -32,6 +38,8 @@ class Ticket extends Model
 
     protected $casts = [
         'fotos_resolucion'   => 'array',
+        'archivos_evidencia' => 'array',
+        'campos_extra'       => 'array',
         'confirmado_usuario' => 'boolean',
         'fecha_confirmacion' => 'datetime',
         'fecha_resolucion'   => 'datetime',

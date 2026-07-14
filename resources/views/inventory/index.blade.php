@@ -14,9 +14,14 @@
                 </a>
             @endif
         </div>
-        <a href="{{ route('inventory.create') }}" class="bg-[#041b32] text-white font-bold py-2 px-4 rounded shadow hover:opacity-90">
-            + Nuevo Artículo
-        </a>
+        <div class="flex gap-2">
+            <a href="{{ route('inventory.reportes') }}" class="bg-white text-[#041b32] border border-gray-200 font-bold py-2 px-4 rounded shadow-sm hover:bg-gray-50">
+                📊 Reportes
+            </a>
+            <a href="{{ route('inventory.create') }}" class="bg-[#041b32] text-white font-bold py-2 px-4 rounded shadow hover:opacity-90">
+                + Nuevo Artículo
+            </a>
+        </div>
     </div>
 
     {{-- Filtros --}}

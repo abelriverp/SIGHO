@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\InventarioItem;
 use App\Models\InventarioMovimiento;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\Concerns\ResuelveHotelActivo;
 
 class InventoryController extends Controller
 {
+    use ResuelveHotelActivo;
+
     // ─── Áreas disponibles ────────────────────────────────────
     const AREAS = [
         'Sistemas',
@@ -37,16 +41,13 @@ class InventoryController extends Controller
     // ─── Helper: filtro base por hotel ─────────────────────────
     private function queryBase()
     {
-        return InventarioItem::where('hotel_code', env('HOTEL_CODE', 'MAZ'));
+        return InventarioItem::where('hotel_code', $this->hotelActivo());
     }
 
-    // ─── Helper: recalcular status según cantidad ──────────────
-    private function calcularStatus(InventarioItem $item): string
-    {
-        if ($item->cantidad <= 0) return 'Agotado';
-        if ($item->stock_minimo > 0 && $item->cantidad <= $item->stock_minimo) return 'Disponible'; // sigue disponible pero bajoPorStock alerta
-        return 'Disponible';
-    }
+    // Nota: el "status" (Disponible/Agotado/Baja) es independiente del stock
+    // mínimo. El stock mínimo NUNCA cambia el status del artículo — solo
+    // dispara la alerta visual (badge rojo, contador de "Stock Bajo") a
+    // través de InventarioItem::bajoPorStock(). Ver dashboard y navbar.
 
     // ─────────────────────────────────────────────────────────
     // INDEX
@@ -106,7 +107,7 @@ class InventoryController extends Controller
             'pdf_baja'     => 'nullable|mimes:pdf|max:5120',
         ]);
 
-        $hotelCode     = env('HOTEL_CODE', 'MAZ');
+        $hotelCode     = $this->hotelActivo();
         $data['hotel_code'] = $hotelCode;
         $data['user_id']    = auth()->id();
 
@@ -156,9 +157,15 @@ class InventoryController extends Controller
         $item = $this->queryBase()->findOrFail($id);
 
         $data = $request->validate([
-            'tipo'     => 'required|in:entrada,salida',
-            'cantidad' => 'required|numeric|min:0.01',
-            'motivo'   => 'required|string|max:255',
+            'tipo'           => 'required|in:entrada,salida',
+            'cantidad'       => 'required|numeric|min:0.01',
+            'motivo'         => 'required|string|max:255',
+            'tipo_salida'    => 'required_if:tipo,salida|nullable|in:' . implode(',', array_keys(InventarioMovimiento::TIPOS_SALIDA)),
+            'habitacion'     => 'required_if:tipo_salida,solicitud_huesped|nullable|string|max:20',
+            'huesped_nombre' => 'nullable|string|max:150',
+        ], [
+            'tipo_salida.required_if'    => 'Selecciona el motivo de la salida.',
+            'habitacion.required_if'     => 'La habitación es obligatoria cuando la salida es por solicitud de huésped.',
         ]);
 
         $cantidadAnterior = (float) $item->cantidad;
@@ -186,6 +193,9 @@ class InventoryController extends Controller
             'inventario_item_id' => $item->id,
             'user_id'            => auth()->id(),
             'tipo'               => $data['tipo'],
+            'tipo_salida'        => $data['tipo'] === 'salida' ? $data['tipo_salida'] : null,
+            'habitacion'         => $data['habitacion'] ?? null,
+            'huesped_nombre'     => $data['huesped_nombre'] ?? null,
             'cantidad'           => $delta,
             'cantidad_anterior'  => $cantidadAnterior,
             'cantidad_nueva'     => $cantidadNueva,
@@ -194,6 +204,48 @@ class InventoryController extends Controller
 
         $tipoLabel = $data['tipo'] === 'entrada' ? 'Entrada' : 'Salida';
         return back()->with('success', "{$tipoLabel} de {$delta} {$item->unidad} registrada. Stock actual: {$cantidadNueva}.");
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // REPORTES: productos más usados (salidas)
+    // ─────────────────────────────────────────────────────────
+    public function reportes(Request $request)
+    {
+        $desde = $request->filled('desde') ? $request->date('desde') : now()->subDays(30);
+        $hasta = $request->filled('hasta') ? $request->date('hasta') : now();
+
+        $hotelCode = $this->hotelActivo();
+
+        $topProductos = InventarioMovimiento::query()
+            ->join('inventario_items', 'inventario_items.id', '=', 'inventario_movimientos.inventario_item_id')
+            ->where('inventario_movimientos.hotel_code', $hotelCode)
+            ->where('inventario_movimientos.tipo', 'salida')
+            ->whereBetween('inventario_movimientos.created_at', [$desde->startOfDay(), $hasta->endOfDay()])
+            ->when($request->filled('area'), fn($q) => $q->where('inventario_items.area', $request->area))
+            ->selectRaw('inventario_items.id, inventario_items.nombre, inventario_items.unidad, inventario_items.area,
+                         SUM(inventario_movimientos.cantidad) as total_salidas,
+                         COUNT(*) as veces_solicitado')
+            ->groupBy('inventario_items.id', 'inventario_items.nombre', 'inventario_items.unidad', 'inventario_items.area')
+            ->orderByDesc('total_salidas')
+            ->limit(10)
+            ->get();
+
+        $porTipoSalida = InventarioMovimiento::query()
+            ->where('hotel_code', $hotelCode)
+            ->where('tipo', 'salida')
+            ->whereBetween('created_at', [$desde->startOfDay(), $hasta->endOfDay()])
+            ->selectRaw('COALESCE(tipo_salida, "sin_clasificar") as tipo_salida, SUM(cantidad) as total')
+            ->groupBy('tipo_salida')
+            ->get();
+
+        return view('inventory.reportes', [
+            'topProductos'   => $topProductos,
+            'porTipoSalida'  => $porTipoSalida,
+            'areas'          => self::AREAS,
+            'desde'          => $desde->format('Y-m-d'),
+            'hasta'          => $hasta->format('Y-m-d'),
+            'filtroArea'     => $request->area,
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -273,6 +325,18 @@ class InventoryController extends Controller
     public function destroy($id)
     {
         $item = $this->queryBase()->findOrFail($id);
+
+        // Snapshot antes de borrar: el registro (y sus movimientos, por cascade)
+        // desaparecen de la BD, así que este es el único rastro que queda.
+        $snapshot = $item->only(['id', 'hotel_code', 'area', 'nombre', 'categoria', 'cantidad', 'status']);
+
+        AuditLog::registrar(
+            'inventario.eliminado',
+            "Eliminó del inventario el artículo \"{$item->nombre}\" ({$item->area}), con {$item->cantidad} {$item->unidad} en existencia.",
+            $item,
+            $snapshot,
+            null
+        );
 
         if ($item->imagen_path) Storage::disk('public')->delete($item->imagen_path);
         if ($item->pdf_path)    Storage::disk('public')->delete($item->pdf_path);

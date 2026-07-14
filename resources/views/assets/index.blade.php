@@ -3,7 +3,7 @@
 @section('content')
     <div class="flex justify-between items-end mb-6">
         <div>
-            <h2 class="text-2xl font-bold text-slate-800">Control de activos de TI</h2>
+            <h2 class="text-2xl font-bold text-slate-800">Control de Equipos</h2>
             <p class="text-gray-500 text-sm mt-1">Historial de reparaciones y mantenimiento</p>
         </div>  
         <div class="flex gap-2"> 

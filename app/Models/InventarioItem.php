@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToHotel;
 
 class InventarioItem extends Model
 {
+    use BelongsToHotel;
+
     protected $fillable = [
         'hotel_code',
         'area',

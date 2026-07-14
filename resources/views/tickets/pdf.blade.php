@@ -27,7 +27,7 @@
 <body>
     <div class="header">
         <h2 style="margin:0;">HOTEL EMPORIO MAZATLÁN</h2>
-        <p style="margin:5px 0 0 0;">Reporte de TI - Ticket #{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</p>
+        <p style="margin:5px 0 0 0;">Reporte de Soporte - Ticket #{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</p>
     </div>
 
     {{-- Bloque de Información del Ticket --}}
@@ -75,6 +75,27 @@
         </div>
     </div>
 
+    {{-- EVIDENCIA ADJUNTA AL REPORTAR (fotos que subió el solicitante al abrir el ticket) --}}
+    @if($fotosEvidenciaBase64 && count($fotosEvidenciaBase64) > 0)
+    <div class="info-section" style="margin-bottom: 25px;">
+        <div class="label">Evidencia Adjunta al Reportar</div>
+        <table width="100%" cellpadding="6" cellspacing="0" style="border-collapse: collapse; margin-top: 5px;">
+            @foreach(array_chunk($fotosEvidenciaBase64, 2) as $fila)
+            <tr>
+                @foreach($fila as $foto)
+                <td width="50%" style="border: 1px solid #d1d5db; vertical-align: middle; text-align: center; height: 170px; background: #f9fafb;">
+                    <img src="{{ $foto }}" style="max-width: 100%; max-height: 150px; object-fit: contain; display: block; margin: 0 auto;">
+                </td>
+                @endforeach
+                @if(count($fila) === 1)
+                <td width="50%"></td>
+                @endif
+            </tr>
+            @endforeach
+        </table>
+    </div>
+    @endif
+
     @if($ticket->notas_admin)
     <div class="info-section" style="margin-bottom: 25px;">
         <div class="label">Resolución Técnica</div>
@@ -95,7 +116,7 @@
                         <span style="font-size: 9px; font-weight: bold; color: #bfdbfe; text-transform: uppercase;">Constancia de Resolución Técnica</span>
                     </td></tr>
                     <tr><td style="background: #eff6ff; padding: 8px 12px; font-family: monospace; font-size: 10px; color: #334155;">
-                        <p style="margin: 2px 0;"><span style="color: #94a3b8;">Resuelto por :</span> <strong style="color: #041b32;">{{ $ticket->resolvedByUser->name ?? 'Técnico TI' }}</strong></p>
+                        <p style="margin: 2px 0;"><span style="color: #94a3b8;">Resuelto por :</span> <strong style="color: #041b32;">{{ $ticket->resolvedByUser->name ?? 'Técnico asignado' }}</strong></p>
                         <p style="margin: 2px 0;"><span style="color: #94a3b8;">Fecha y hora :</span> {{ $ticket->fecha_resolucion?->format('d/m/Y H:i') ?? '—' }}</p>
                         <p style="margin: 2px 0;"><span style="color: #94a3b8;">Token        :</span> <strong style="color: #1d4ed8;">{{ $ticket->token_resolucion }}</strong></p>
                         <p style="margin: 2px 0;"><span style="color: #94a3b8;">IP de origen :</span> {{ $ticket->ip_resolucion ?? '—' }}</p>
@@ -194,7 +215,7 @@
                                 <span style="font-size: 9px; font-weight: bold; color: #bfdbfe; text-transform: uppercase; letter-spacing: 0.05em;">Constancia de Resolución Técnica</span>
                             </td></tr>
                             <tr><td style="background: #eff6ff; padding: 8px 12px; font-family: monospace; font-size: 10px; color: #334155;">
-                                <p style="margin: 2px 0;"><span style="color: #94a3b8;">Resuelto por :</span> <strong style="color: #041b32;">{{ $ticket->resolvedByUser->name ?? 'Técnico TI' }}</strong></p>
+                                <p style="margin: 2px 0;"><span style="color: #94a3b8;">Resuelto por :</span> <strong style="color: #041b32;">{{ $ticket->resolvedByUser->name ?? 'Técnico asignado' }}</strong></p>
                                 <p style="margin: 2px 0;"><span style="color: #94a3b8;">Fecha y hora :</span> {{ $ticket->fecha_resolucion?->format('d/m/Y H:i') ?? '—' }}</p>
                                 <p style="margin: 2px 0;"><span style="color: #94a3b8;">Token        :</span> <strong style="color: #1d4ed8;">{{ $ticket->token_resolucion }}</strong></p>
                                 <p style="margin: 2px 0;"><span style="color: #94a3b8;">IP de origen :</span> {{ $ticket->ip_resolucion ?? '—' }}</p>

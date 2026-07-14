@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Revision;
+use App\Models\Concerns\BelongsToHotel;
 
 class Asset extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToHotel;
 
     protected $fillable = [
         'nombre', 'nomenclatura', 'area', 'encargado', 'ip_address', 'status', 'notas', 'pdf_path', 'imagen_path',

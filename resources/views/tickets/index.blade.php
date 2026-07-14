@@ -70,7 +70,9 @@
                 <select name="departamento_destino"
                         class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#041b32]">
                     <option value="">Todos</option>
-                    @foreach(['Sistemas', 'Mantenimiento', 'Seguridad', 'Ama de Llaves'] as $dpto)
+                    {{-- Se listan todos (incluyendo inactivos) para no perder el filtro
+                         de tickets antiguos que quedaron con un departamento ya desactivado. --}}
+                    @foreach(\App\Models\Departamento::orderBy('nombre')->pluck('nombre') as $dpto)
                         <option value="{{ $dpto }}" {{ (request('departamento_destino') === $dpto || (isset($filtros['departamento_destino']) && $filtros['departamento_destino'] === $dpto)) ? 'selected' : '' }}>
                             {{ $dpto }}
                         </option>
@@ -122,6 +124,20 @@
                        name="fecha_hasta"
                        value="{{ request('fecha_hasta', $filtros['fecha_hasta'] ?? '') }}"
                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#041b32]">
+            </div>
+
+            {{-- Orden --}}
+            <div class="flex flex-col gap-1 min-w-[140px]">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Orden</label>
+                <select name="orden"
+                        class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#041b32]">
+                    <option value="recientes" {{ (request('orden', $filtros['orden'] ?? 'recientes')) === 'recientes' ? 'selected' : '' }}>
+                        Más recientes primero
+                    </option>
+                    <option value="antiguos" {{ (request('orden', $filtros['orden'] ?? 'recientes')) === 'antiguos' ? 'selected' : '' }}>
+                        Más antiguos primero
+                    </option>
+                </select>
             </div>
 
             {{-- Botones --}}
@@ -297,6 +313,10 @@
                         <span class="text-[11px] text-gray-400 font-medium">{{ $ticket->created_at->format('d/m/Y H:i') }}</span>
                     </div>
 
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-mono text-[11px] font-bold text-slate-400">#{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</span>
+                    </div>
+
                     <h4 class="font-bold text-lg text-slate-800">{{ $ticket->area }}</h4>
 
                     <div class="flex items-center gap-2 mb-2">
@@ -309,7 +329,7 @@
                     <p class="text-sm text-gray-600 line-clamp-3 italic">"{{ $ticket->descripcion }}"</p>
 
                     <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                        @if($ticket->archivo_path)
+                        @if($ticket->archivo_path || $ticket->archivos_evidencia)
                             <span class="text-gray-400" title="Contiene evidencia">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -352,6 +372,10 @@
                         {{ $ticket->prioridad }}
                     </span>
                     <span class="text-[11px] text-gray-400 font-medium">{{ $ticket->created_at->format('d/m/Y H:i') }}</span>
+                </div>
+
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="font-mono text-[11px] font-bold text-slate-400">#{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</span>
                 </div>
 
                 <h4 class="font-bold text-lg text-slate-800">{{ $ticket->area }}</h4>
@@ -406,7 +430,7 @@
                     <th class="py-4 px-6">ID</th>
                     <th class="py-4 px-6">Ubicación / Reporta</th>
                     <th class="py-4 px-6">Descripción</th>
-                    <th class="py-4 px-6">Resolución TI</th>
+                    <th class="py-4 px-6">Resolución</th>
                     <th class="py-4 px-6">Token</th>
                     <th class="py-4 px-6">Cierre</th>
                     <th class="py-4 px-6 text-right">Detalle</th>

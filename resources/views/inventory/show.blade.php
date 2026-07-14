@@ -73,11 +73,11 @@
                 </div>
 
                 {{-- Botones + formulario de movimiento rápido (Alpine.js) --}}
-                <div x-data="{ tipo: '' }" class="border-t border-gray-100 pt-4">
+                <div x-data="{ tipo: '', tipoSalida: '' }" class="border-t border-gray-100 pt-4">
                     <p class="text-xs font-bold text-gray-500 uppercase mb-3">Registrar movimiento</p>
 
                     <div class="flex gap-2 mb-3">
-                        <button @click="tipo = tipo === 'entrada' ? '' : 'entrada'"
+                        <button @click="tipo = tipo === 'entrada' ? '' : 'entrada'; tipoSalida=''"
                             :class="tipo === 'entrada' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-800 hover:bg-green-100'"
                             class="flex-1 text-sm font-bold py-2 px-4 rounded-lg border border-green-200 transition">
                             ↑ Entrada
@@ -108,7 +108,36 @@
                                 <label class="block text-xs font-bold text-gray-600 mb-1">Motivo <span class="text-red-500">*</span></label>
                                 <input type="text" name="motivo" required maxlength="255"
                                     class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-blue-900 focus:ring focus:ring-blue-100"
-                                    :placeholder="tipo === 'entrada' ? 'Ej: Reabastecimiento semanal' : 'Ej: Uso en habitación 305'">
+                                    :placeholder="tipo === 'entrada' ? 'Ej: Reabastecimiento semanal' : 'Ej: Amenidad solicitada por el huésped'">
+                            </div>
+                        </div>
+
+                        {{-- Campos exclusivos de SALIDA --}}
+                        <div x-show="tipo === 'salida'" x-cloak class="grid grid-cols-2 gap-3 border-t border-gray-200 pt-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Tipo de salida <span class="text-red-500">*</span></label>
+                                <select name="tipo_salida" x-model="tipoSalida" :required="tipo === 'salida'"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-blue-900 focus:ring focus:ring-blue-100">
+                                    <option value="">Selecciona...</option>
+                                    @foreach(\App\Models\InventarioMovimiento::TIPOS_SALIDA as $clave => $label)
+                                        <option value="{{ $clave }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">
+                                    Habitación <span class="text-red-500" x-show="tipoSalida === 'solicitud_huesped'">*</span>
+                                </label>
+                                <input type="text" name="habitacion" maxlength="20"
+                                    :required="tipoSalida === 'solicitud_huesped'"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-blue-900 focus:ring focus:ring-blue-100"
+                                    placeholder="Ej: 305">
+                            </div>
+                            <div class="col-span-2" x-show="tipoSalida === 'solicitud_huesped'" x-cloak>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Nombre del huésped (opcional)</label>
+                                <input type="text" name="huesped_nombre" maxlength="150"
+                                    class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:border-blue-900 focus:ring focus:ring-blue-100"
+                                    placeholder="Ej: Juan Pérez">
                             </div>
                         </div>
 
@@ -150,6 +179,7 @@
                                     <th class="py-2 px-4 text-left">Tipo</th>
                                     <th class="py-2 px-4 text-right">Cantidad</th>
                                     <th class="py-2 px-4 text-right">Stock resultante</th>
+                                    <th class="py-2 px-4 text-left">Habitación</th>
                                     <th class="py-2 px-4 text-left">Motivo</th>
                                     <th class="py-2 px-4 text-left">Registró</th>
                                 </tr>
@@ -167,7 +197,20 @@
                                         {{ $mov->tipo == 'entrada' ? '+' : '-' }}{{ $mov->cantidad }} {{ $item->unidad }}
                                     </td>
                                     <td class="py-2 px-4 text-right text-gray-600 font-bold">{{ $mov->cantidad_nueva }} {{ $item->unidad }}</td>
-                                    <td class="py-2 px-4 text-gray-500 text-xs">{{ $mov->motivo ?? '—' }}</td>
+                                    <td class="py-2 px-4 text-gray-500 text-xs">
+                                        @if($mov->habitacion)
+                                            <span class="font-bold text-gray-700">Hab. {{ $mov->habitacion }}</span>
+                                            @if($mov->huesped_nombre)<br><span class="text-gray-400">{{ $mov->huesped_nombre }}</span>@endif
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td class="py-2 px-4 text-gray-500 text-xs">
+                                        {{ $mov->motivo ?? '—' }}
+                                        @if($mov->tipoSalidaLabel())
+                                            <br><span class="text-[10px] uppercase font-bold text-indigo-500">{{ $mov->tipoSalidaLabel() }}</span>
+                                        @endif
+                                    </td>
                                     <td class="py-2 px-4 text-gray-500 text-xs">{{ $mov->usuario->name ?? '—' }}</td>
                                 </tr>
                                 @endforeach
