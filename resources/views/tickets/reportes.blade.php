@@ -45,13 +45,15 @@
     {{-- Tarjetas de KPIs --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div class="relative bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+            <x-info-tip>Tickets levantados dentro del rango seleccionado, contados por su <strong>fecha de creación</strong> — sin importar si ya se resolvieron o siguen abiertos.</x-info-tip>
             <p class="text-xs font-bold text-gray-400 uppercase">Tickets Creados</p>
             <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $metricas['creados'] }}</p>
             <p class="text-xs text-gray-400 mt-1">levantados en el rango</p>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div class="relative bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+            <x-info-tip>Tickets marcados como resueltos dentro del rango, contados por su <strong>fecha de resolución</strong> — no importa cuándo se hayan creado. Puede incluir tickets levantados antes del rango, por eso este número no tiene que coincidir con "Tickets Creados".</x-info-tip>
             <p class="text-xs font-bold text-gray-400 uppercase">Tickets Resueltos</p>
             <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $metricas['resueltos'] }}</p>
             <p class="text-xs text-gray-400 mt-1">cerrados en el rango</p>
@@ -67,7 +69,8 @@
                 ? ['text' => 'text-gray-400', 'bg' => 'bg-white', 'border' => 'border-gray-100']
                 : $semaforoEstilos[$metricas['slaPorcentaje'] >= 80 ? 'verde' : ($metricas['slaPorcentaje'] >= 60 ? 'amarillo' : 'rojo')];
         @endphp
-        <div class="rounded-lg shadow-sm border p-4 {{ $slaColor['bg'] }} {{ $slaColor['border'] }}">
+        <div class="relative rounded-lg shadow-sm border p-4 {{ $slaColor['bg'] }} {{ $slaColor['border'] }}">
+            <x-info-tip>De los <strong>Tickets Resueltos</strong> en el rango, qué porcentaje se cerró dentro de las {{ $metricas['sla_horas'] }} horas desde que se creó. Si no hay tickets resueltos en el rango, se muestra "—" (no hay nada que evaluar todavía).</x-info-tip>
             <p class="text-xs font-bold text-gray-400 uppercase">% Dentro de SLA ({{ $metricas['sla_horas'] }} hrs)</p>
             <p class="text-2xl font-bold mt-1 {{ $slaColor['text'] }}">
                 {{ $metricas['slaPorcentaje'] !== null ? $metricas['slaPorcentaje'] . '%' : '—' }}
@@ -81,7 +84,8 @@
             </p>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div class="relative bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+            <x-info-tip>El periodo de fechas que se está consultando en este corte. Cámbialo con el filtro de arriba ("Desde" / "Hasta").</x-info-tip>
             <p class="text-xs font-bold text-gray-400 uppercase">Rango</p>
             <p class="text-sm font-bold text-[#041b32] mt-1">{{ \Illuminate\Support\Carbon::parse($metricas['desde'])->format('d/m/Y') }}</p>
             <p class="text-xs text-gray-400">al {{ \Illuminate\Support\Carbon::parse($metricas['hasta'])->format('d/m/Y') }}</p>
@@ -94,6 +98,7 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Tickets por Estado (levantados en el rango)</h3>
+                <p class="text-[11px] text-gray-400 normal-case mt-0.5">Por fecha de creación, agrupado por su estado actual.</p>
             </div>
             @if(empty($metricas['ticketsPorEstado']))
                 <div class="p-6 text-center text-sm text-gray-400">Sin tickets en el rango seleccionado.</div>
@@ -115,6 +120,7 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Tiempo Promedio de Resolución por Departamento</h3>
+                <p class="text-[11px] text-gray-400 normal-case mt-0.5">Por fecha de resolución (no de creación) — puede incluir tickets levantados antes del rango.</p>
             </div>
             @if(empty($metricas['tiempoPorDepartamento']))
                 <div class="p-6 text-center text-sm text-gray-400">Sin tickets resueltos en el rango seleccionado.</div>
@@ -146,6 +152,7 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
             <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Ranking de Técnicos</h3>
+                <p class="text-[11px] text-gray-400 normal-case mt-0.5">Mismo criterio que "Tiempo por Departamento", pero solo cuenta tickets con técnico responsable registrado — por eso el total puede ser menor.</p>
             </div>
             <table class="w-full text-sm">
                 <thead>
