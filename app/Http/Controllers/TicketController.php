@@ -119,7 +119,7 @@ class TicketController extends Controller
     {
         $user = auth()->user();
 
-        if (!($user->puedeVerTodos() || $user->isTecnico())) {
+        if (!$user->can('viewReportes', Ticket::class)) {
             abort(403, 'No tienes permiso para generar reportes de tickets.');
         }
 
@@ -142,7 +142,7 @@ class TicketController extends Controller
     {
         $user = auth()->user();
 
-        if (!($user->puedeVerTodos() || $user->isTecnico())) {
+        if (!$user->can('viewReportes', Ticket::class)) {
             abort(403, 'No tienes permiso para generar reportes de tickets.');
         }
 
@@ -189,19 +189,11 @@ class TicketController extends Controller
                 })
                 ->first();
 
-            // Control de acceso: cada rol solo puede ver lo suyo
+            // Control de acceso: cada rol solo puede ver lo suyo (misma
+            // regla que TicketPolicy::view, usada también en show() y
+            // downloadPDF()).
             if ($ticketEncontrado) {
-                $acceso = false;
-
-                if ($user->isAdmin() || $user->isGerente()) {
-                    $acceso = true;
-                } elseif ($user->isTecnico()) {
-                    $acceso = $ticketEncontrado->departamento_destino === $user->departamento
-                              || $ticketEncontrado->user_id === $user->id;
-                } else {
-                    // usuario normal: solo puede ver tokens de sus propios tickets
-                    $acceso = $ticketEncontrado->user_id === $user->id;
-                }
+                $acceso = $user->can('view', $ticketEncontrado);
 
                 return view('tickets.index', [
                     'ticketEncontrado'    => $acceso ? $ticketEncontrado : null,
@@ -440,16 +432,8 @@ class TicketController extends Controller
         $ticket = Ticket::with(['user', 'notas.user'])->findOrFail($id);
         $user   = auth()->user();
 
-        if ($user->isAdmin() || $user->isGerente()) {
-            // permitido
-        } elseif ($user->isTecnico()) {
-            if ($ticket->departamento_destino !== $user->departamento && $ticket->user_id !== $user->id) {
-                abort(403, 'No tienes permiso para ver este ticket.');
-            }
-        } else {
-            if ($ticket->user_id !== $user->id) {
-                abort(403, 'No tienes permiso para ver este ticket.');
-            }
+        if (!$user->can('view', $ticket)) {
+            abort(403, 'No tienes permiso para ver este ticket.');
         }
 
         return view('tickets.show', compact('ticket'));
@@ -862,16 +846,8 @@ class TicketController extends Controller
         $ticket = Ticket::with(['user', 'notas.user'])->findOrFail($id);
         $user   = auth()->user();
 
-        if ($user->isAdmin() || $user->isGerente()) {
-            // permitido
-        } elseif ($user->isTecnico()) {
-            if ($ticket->departamento_destino !== $user->departamento && $ticket->user_id !== $user->id) {
-                abort(403, 'No tienes permiso para descargar este ticket.');
-            }
-        } else {
-            if ($ticket->user_id !== $user->id) {
-                abort(403, 'No tienes permiso para descargar este ticket.');
-            }
+        if (!$user->can('view', $ticket)) {
+            abort(403, 'No tienes permiso para descargar este ticket.');
         }
 
         // Evidencia adjunta por el solicitante al abrir el ticket.
@@ -952,7 +928,7 @@ class TicketController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user->isAdmin()) {
+        if (!$user->can('delete', Ticket::class)) {
             abort(403, 'Solo un Administrador puede eliminar tickets.');
         }
 
