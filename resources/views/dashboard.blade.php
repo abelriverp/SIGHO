@@ -26,7 +26,16 @@
         $estiloSla = $semaforoEstilos[$sla['semaforo']];
     @endphp
 
-    <div class="mb-6 rounded-lg {{ $estiloSla['bg'] }} {{ $estiloSla['border'] }} border p-5 shadow-sm">
+    <div class="mb-6 relative rounded-lg {{ $estiloSla['bg'] }} {{ $estiloSla['border'] }} border p-5 shadow-sm">
+        {{-- Ayuda: qué significa esta tarjeta y cómo se calcula, para que
+             dirección/gerencia no tenga que preguntar cada vez. --}}
+        <div class="absolute top-3 right-3 group">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-white/80 border border-gray-300 text-gray-500 text-[11px] font-bold cursor-help hover:bg-white hover:text-gray-700 transition">?</span>
+            <div class="hidden group-hover:block absolute right-0 top-full mt-2 w-72 rounded-lg bg-gray-900 text-white text-xs leading-relaxed p-3 shadow-lg z-50 normal-case">
+                Mira los tickets levantados en los últimos {{ $sla['periodo_dias'] }} días que ya se pueden evaluar: los que ya se resolvieron (a tiempo o tarde), o los que siguen abiertos pero ya llevan más de {{ $sla['sla_horas'] }} horas sin resolverse. Un ticket recién creado con menos de {{ $sla['sla_horas'] }} horas no cuenta todavía porque aún no se le puede juzgar. El porcentaje es cuántos de esos se resolvieron dentro de las {{ $sla['sla_horas'] }} horas.
+            </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span class="flex h-3 w-3 rounded-full {{ $estiloSla['dot'] }}"></span>
