@@ -103,6 +103,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [TicketController::class, 'index'])->name('index');
         Route::get('/crear', [TicketController::class, 'create'])->name('create');
         Route::post('/', [TicketController::class, 'store'])->name('store');
+        // Reportes va antes de /{id} para que "reportes" no se interprete como un id de ticket.
+        Route::get('/reportes', [TicketController::class, 'reportes'])->name('reportes');
+        Route::get('/reportes/pdf', [TicketController::class, 'reportesPdf'])->name('reportes.pdf');
         Route::get('/{id}', [TicketController::class, 'show'])->name('show');
         Route::match(['PUT', 'PATCH'], '/{id}/resolver', [TicketController::class, 'resolve'])->name('resolve');
         Route::patch('/{id}/reasignar', [TicketController::class, 'reasignar'])->name('reasignar');
@@ -144,4 +147,15 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/propiedades', [AdminSettingsController::class, 'hotelesIndex'])->name('hoteles.index');
         Route::get('/propiedades/crear', [AdminSettingsController::class, 'hotelesCreate'])->name('hoteles.create');
-   
+        Route::post('/propiedades', [AdminSettingsController::class, 'hotelesStore'])->name('hoteles.store');
+        Route::get('/propiedades/{id}/editar', [AdminSettingsController::class, 'hotelesEdit'])->name('hoteles.edit');
+        Route::put('/propiedades/{id}', [AdminSettingsController::class, 'hotelesUpdate'])->name('hoteles.update');
+        Route::delete('/propiedades/{id}', [AdminSettingsController::class, 'hotelesDestroy'])->name('hoteles.destroy');
+
+        Route::get('/bitacora', [AdminSettingsController::class, 'auditoriaIndex'])->name('auditoria.index');
+
+        // Gestión de áreas y plantillas para el módulo de activos
+        Route::resource('activo-plantillas', ActivoPlantillaController::class)
+            ->names('activo-plantillas');
+    });
+});

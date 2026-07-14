@@ -19,6 +19,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Throwable;
 use App\Http\Controllers\Concerns\ResuelveHotelActivo;
+use App\Services\DashboardMetricsService;
+use Carbon\Carbon;
 
 class TicketController extends Controller
 {
@@ -82,6 +84,91 @@ class TicketController extends Controller
             default =>
                 "ocurrió un error desconocido al subir el archivo (código {$codigo}).",
         };
+    }
+
+    // ==========================================
+    // HELPER: Resuelve el rango de fechas para "Reportes" (corte de
+    // tickets) a partir del request, con default de "lo que va del mes"
+    // si no se especifica. Compartido entre la pantalla y la descarga en
+    // PDF para que ambas usen exactamente el mismo rango.
+    // ==========================================
+    private function rangoReportes(Request $request): array
+    {
+        $desde = $request->filled('desde') ? Carbon::parse($request->desde) : now()->startOfMonth();
+        $hasta = $request->filled('hasta') ? Carbon::parse($request->hasta) : now();
+
+        // Si por error meten el rango al revés, lo corregimos en vez de
+        // regresar un reporte vacío sin explicación.
+        if ($desde->gt($hasta)) {
+            [$desde, $hasta] = [$hasta, $desde];
+        }
+
+        return [$desde, $hasta];
+    }
+
+    // ==========================================
+    // REPORTES — "corte" de tickets para un rango de fechas, pensado para
+    // que dirección/gerencia pida sus KPIs de un periodo específico
+    // (a diferencia del Dashboard, que siempre mira la última semana).
+    // Solo para quien supervisa tickets: admin/gerente ven toda la
+    // propiedad, técnico ve solo su propio departamento. Un usuario normal
+    // no genera este corte (solo reporta tickets, no le corresponde este
+    // nivel de información).
+    // ==========================================
+    public function reportes(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!($user->puedeVerTodos() || $user->isTecnico())) {
+            abort(403, 'No tienes permiso para generar reportes de tickets.');
+        }
+
+        [$desde, $hasta] = $this->rangoReportes($request);
+
+        $metricas = app(DashboardMetricsService::class)
+            ->metricasPeriodo($user, $this->hotelActivo(), $desde, $hasta);
+
+        return view('tickets.reportes', [
+            'metricas'    => $metricas,
+            'hotelActivo' => $this->hotelActivo(),
+        ]);
+    }
+
+    // ==========================================
+    // REPORTES PDF — mismo corte que reportes(), pero descargable para que
+    // dirección lo pueda archivar/imprimir/compartir fuera del sistema.
+    // ==========================================
+    public function reportesPdf(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!($user->puedeVerTodos() || $user->isTecnico())) {
+            abort(403, 'No tienes permiso para generar reportes de tickets.');
+        }
+
+        [$desde, $hasta] = $this->rangoReportes($request);
+
+        $metricas    = app(DashboardMetricsService::class)
+            ->metricasPeriodo($user, $this->hotelActivo(), $desde, $hasta);
+        $hotelActivo = $this->hotelActivo();
+
+        try {
+            $pdf = Pdf::loadView('tickets.reportes_pdf', compact('metricas', 'hotelActivo', 'user'))
+                      ->setPaper('letter', 'portrait');
+
+            $nombreArchivo = 'Corte_Tickets_' . $metricas['desde'] . '_a_' . $metricas['hasta'] . '.pdf';
+
+            return $pdf->download($nombreArchivo);
+        } catch (Throwable $e) {
+            Log::error('Error generando PDF de reporte de tickets: ' . $e->getMessage(), [
+                'user_id'   => $user->id,
+                'desde'     => $metricas['desde'],
+                'hasta'     => $metricas['hasta'],
+                'exception' => get_class($e),
+            ]);
+
+            return back()->with('error', 'Ocurrió un problema al generar el PDF del reporte. Intenta de nuevo o contacta a sistemas si el error persiste.');
+        }
     }
 
     // ==========================================
@@ -892,4 +979,17 @@ class TicketController extends Controller
 
         $snapshot = $ticket->only(['id', 'area', 'departamento_destino', 'descripcion', 'status', 'user_id']);
 
-        Au
+        AuditLog::registrar(
+            'ticket.eliminado',
+            "Eliminó el ticket #{$ticket->id} (\"{$ticket->area}\", reportado por {$ticket->user->name}).",
+            $ticket,
+            $snapshot,
+            null
+        );
+
+        // Las notas se eliminan en cascada a nivel de base de datos (FK onDelete cascade).
+        $ticket->delete();
+
+        return redirect()->route('tickets.index')->with('success', "Ticket #{$ticket->id} eliminado correctamente.");
+    }
+}

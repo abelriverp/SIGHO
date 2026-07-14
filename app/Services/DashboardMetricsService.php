@@ -62,6 +62,63 @@ class DashboardMetricsService
         ];
     }
 
+    /**
+     * KPIs de un "corte" para un rango de fechas arbitrario (ej. "todo
+     * julio"), pensado para que direccion/gerencia pueda pedir un reporte
+     * de un periodo especifico bajo demanda — a diferencia de metricas(),
+     * que siempre mira los ultimos SEMANAS_TENDENCIA/DIAS_PERIODO_SLA dias.
+     *
+     * Distingue dos universos dentro del rango:
+     *  - "creados": tickets que se LEVANTARON en el rango (para saber
+     *    cuanta demanda entro y en que estado quedaron, sin importar si ya
+     *    se resolvieron o no).
+     *  - "resueltos": tickets que se MARCARON COMO RESUELTOS en el rango
+     *    (para el "corte de reportes terminados" — el % de SLA, tiempo
+     *    promedio y ranking de tecnicos se calculan sobre este universo,
+     *    sin importar cuando se hayan creado).
+     *
+     * Respeta el mismo criterio de visibilidad por rol que metricas().
+     */
+    public function metricasPeriodo(User $user, string $hotelActivo, Carbon $desde, Carbon $hasta): array
+    {
+        $desde = $desde->copy()->startOfDay();
+        $hasta = $hasta->copy()->endOfDay();
+
+        $tickets = $this->ticketsVisibles($user, $hotelActivo)
+            ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'created_at', 'fecha_resolucion']);
+
+        $creados = $tickets->filter(
+            fn ($t) => $t->created_at && $t->created_at->between($desde, $hasta)
+        );
+
+        $resueltos = $tickets->filter(
+            fn ($t) => $t->fecha_resolucion && $t->fecha_resolucion->between($desde, $hasta)
+        );
+
+        $cumplidos = $resueltos->filter(
+            fn ($t) => $this->horasEntre($t->created_at, $t->fecha_resolucion) <= self::SLA_HORAS
+        )->count();
+
+        return [
+            'desde'                 => $desde->format('Y-m-d'),
+            'hasta'                 => $hasta->format('Y-m-d'),
+            'sla_horas'             => self::SLA_HORAS,
+            'creados'               => $creados->count(),
+            'resueltos'             => $resueltos->count(),
+            'slaCumplidos'          => $cumplidos,
+            'slaPorcentaje'         => $resueltos->isEmpty()
+                ? null
+                : round(($cumplidos / $resueltos->count()) * 100, 1),
+            'ticketsPorEstado'      => $this->porEstado($creados),
+            'tiempoPorDepartamento' => $this->tiempoPorDepartamento($resueltos),
+            // Igual que en metricas(): el ranking por técnico es para quien
+            // supervisa, no para comparar compañeros entre sí.
+            'rankingTecnicos'       => $user->puedeVerTodos()
+                ? $this->rankingTecnicos($resueltos)
+                : [],
+        ];
+    }
+
     private function ticketsVisibles(User $user, string $hotelActivo)
     {
         $query = Ticket::withoutGlobalScope(HotelScope::class)

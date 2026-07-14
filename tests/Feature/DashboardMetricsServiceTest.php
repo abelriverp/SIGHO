@@ -6,6 +6,7 @@ use App\Models\Hotel;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\DashboardMetricsService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -258,5 +259,95 @@ class DashboardMetricsServiceTest extends TestCase
         $this->assertSame(75.0, $sla['porcentaje']);
         $this->assertSame('amarillo', $sla['semaforo']);
         $this->assertEqualsWithDelta(25.0, $sla['tendencia'], 0.1); // 75% - 50% del periodo anterior
+    }
+
+    public function test_metricas_periodo_counts_creados_and_resueltos_independently(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+        $this->actingAs($reportante);
+
+        // Creado DENTRO del rango, todavía sin resolver: cuenta como
+        // "creado" pero no como "resuelto".
+        $abierto = $this->crearTicket($reportante);
+        $abierto->forceFill(['created_at' => Carbon::parse('2026-07-05 10:00:00')])->save();
+
+        // Creado FUERA del rango (antes de julio) pero resuelto DENTRO del
+        // rango y a tiempo (exactamente 24h): cuenta como "resuelto" y
+        // "cumplido", aunque NO cuenta como "creado" en este corte.
+        $resueltoATiempo = $this->crearTicket($reportante);
+        $resueltoATiempo->forceFill(['created_at' => Carbon::parse('2026-06-30 08:00:00')])->save();
+        $resueltoATiempo->forceFill([
+            'status'           => 'Resuelto',
+            'fecha_resolucion' => Carbon::parse('2026-07-01 08:00:00'),
+        ])->save();
+
+        $servicio = app(DashboardMetricsService::class);
+        $metricas = $servicio->metricasPeriodo(
+            $admin,
+            'HEMZT',
+            Carbon::parse('2026-07-01 00:00:00'),
+            Carbon::parse('2026-07-31 23:59:59')
+        );
+
+        $this->assertSame('2026-07-01', $metricas['desde']);
+        $this->assertSame('2026-07-31', $metricas['hasta']);
+        $this->assertSame(1, $metricas['creados']);
+        $this->assertSame(1, $metricas['resueltos']);
+        $this->assertSame(1, $metricas['slaCumplidos']);
+        $this->assertSame(100.0, $metricas['slaPorcentaje']);
+    }
+
+    public function test_metricas_periodo_marks_slow_resolutions_as_non_compliant(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+        $this->actingAs($reportante);
+
+        $tarde = $this->crearTicket($reportante);
+        $tarde->forceFill(['created_at' => Carbon::parse('2026-07-05 08:00:00')])->save();
+        $tarde->forceFill([
+            'status'           => 'Resuelto',
+            'fecha_resolucion' => Carbon::parse('2026-07-08 08:00:00'), // 72h despues
+        ])->save();
+
+        $servicio = app(DashboardMetricsService::class);
+        $metricas = $servicio->metricasPeriodo(
+            $admin,
+            'HEMZT',
+            Carbon::parse('2026-07-01 00:00:00'),
+            Carbon::parse('2026-07-31 23:59:59')
+        );
+
+        $this->assertSame(1, $metricas['resueltos']);
+        $this->assertSame(0, $metricas['slaCumplidos']);
+        $this->assertSame(0.0, $metricas['slaPorcentaje']);
+    }
+
+    public function test_metricas_periodo_ranking_tecnicos_respects_role_visibility(): void
+    {
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $tecnico    = $this->crearUsuario('HEMZT', 'tecnico', ['departamento' => 'Sistemas']);
+        $reportante = $this->crearUsuario('HEMZT');
+        $this->actingAs($reportante);
+
+        $ticket = $this->crearTicket($reportante, ['departamento_destino' => 'Sistemas']);
+        $ticket->forceFill(['created_at' => Carbon::parse('2026-07-05 08:00:00')])->save();
+        $ticket->forceFill([
+            'status'           => 'Resuelto',
+            'resolved_by'      => $tecnico->id,
+            'fecha_resolucion' => Carbon::parse('2026-07-05 10:00:00'),
+        ])->save();
+
+        $servicio = app(DashboardMetricsService::class);
+
+        $desde = Carbon::parse('2026-07-01 00:00:00');
+        $hasta = Carbon::parse('2026-07-31 23:59:59');
+
+        $metricasAdmin = $servicio->metricasPeriodo($admin, 'HEMZT', $desde, $hasta);
+        $this->assertCount(1, $metricasAdmin['rankingTecnicos']);
+
+        $metricasTecnico = $servicio->metricasPeriodo($tecnico, 'HEMZT', $desde, $hasta);
+        $this->assertSame([], $metricasTecnico['rankingTecnicos']);
     }
 }
