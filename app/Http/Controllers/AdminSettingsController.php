@@ -435,13 +435,22 @@ class AdminSettingsController extends Controller
     // sin importar cuántas propiedades hubiera dado de alta en
     // Admin > Propiedades. Ver Hotel::activoParaUsuario() para la regla.
     public function propiedadActivaUpdate(Request $request) {
+        // Normalizamos ANTES de validar (no después): hotel_code se guarda
+        // siempre en mayúsculas (ver hotelesStore), pero el "exists" de abajo
+        // compara el valor tal cual llega. En MySQL (producción) la
+        // colación por defecto suele ser insensible a mayúsculas y esto no
+        // se nota, pero en SQLite (usado en las pruebas) sí es sensible, y
+        // sin este merge un valor en minúsculas fallaría la validación aun
+        // existiendo la propiedad.
+        $request->merge(['hotel_code' => strtoupper((string) $request->input('hotel_code'))]);
+
         $data = $request->validate([
             'hotel_code' => 'required|string|exists:hoteles,hotel_code',
         ], [
             'hotel_code.exists' => 'Esa propiedad ya no existe. Recarga la página e intenta de nuevo.',
         ]);
 
-        session(['active_hotel_code' => strtoupper($data['hotel_code'])]);
+        session(['active_hotel_code' => $data['hotel_code']]);
 
         return back()->with('success', 'Propiedad activa cambiada correctamente.');
     }
