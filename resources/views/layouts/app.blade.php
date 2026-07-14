@@ -190,6 +190,23 @@
 
                     @auth
                         <div class="border-l border-[#0a2f57] pl-4 ml-1 flex items-center gap-4">
+                            {{-- Selector de propiedad activa: solo Admin, y solo si hay
+                                 más de una propiedad dada de alta (si solo hay una, no
+                                 tiene caso mostrar un selector que no hace nada). --}}
+                            @if(isset($hotelesDisponibles) && $hotelesDisponibles->count() > 1)
+                                <form action="{{ route('admin.propiedad-activa.update') }}" method="POST">
+                                    @csrf
+                                    <select name="hotel_code" onchange="this.form.submit()" title="Propiedad activa"
+                                            class="bg-[#0a2f57] text-white text-[11px] font-bold uppercase rounded px-2 py-1.5 border border-[#1a4a7a] focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer">
+                                        @foreach($hotelesDisponibles as $hotel)
+                                            <option value="{{ $hotel->hotel_code }}" {{ $hotelActivoSeleccionado === $hotel->hotel_code ? 'selected' : '' }}>
+                                                🏨 {{ $hotel->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            @endif
+
                             <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                                 <button @click="open = !open" type="button" class="relative flex items-center text-lg hover:text-blue-300 transition" title="Alertas">
                                     🔔

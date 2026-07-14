@@ -300,4 +300,167 @@ class AdminSettingsController extends Controller
         // y usuarios guardan el nombre como texto, no como llave foránea) para
         // que no queden "huérfanas" apuntando al nombre viejo.
         if ($nombreAnterior !== $departamento->nombre) {
-            T
+            Ticket::where('departamento_destino', $nombreAnterior)->update(['departamento_destino' => $departamento->nombre]);
+            User::where('departamento', $nombreAnterior)->update(['departamento' => $departamento->nombre]);
+        }
+
+        AuditLog::registrar(
+            'departamento.actualizado',
+            "Editó el departamento \"{$nombreAnterior}\".",
+            $departamento,
+            $antes,
+            $departamento->fresh()->only(['nombre', 'activo'])
+        );
+
+        return redirect()->route('admin.departamentos.index')->with('success', 'Departamento actualizado correctamente.');
+    }
+
+    public function departamentosDestroy($id) {
+        $departamento = Departamento::findOrFail($id);
+
+        $enUsoTickets  = Ticket::where('departamento_destino', $departamento->nombre)->count();
+        $enUsoUsuarios = User::where('departamento', $departamento->nombre)->count();
+
+        if ($enUsoTickets > 0 || $enUsoUsuarios > 0) {
+            return back()->with('error', "No puedes eliminar \"{$departamento->nombre}\": tiene {$enUsoTickets} ticket(s) y {$enUsoUsuarios} usuario(s) asignados. Reasígnalos o desactiva el departamento en vez de eliminarlo.");
+        }
+
+        $datosPrevios = $departamento->only(['nombre', 'activo']);
+
+        AuditLog::registrar(
+            'departamento.eliminado',
+            "Eliminó el departamento \"{$departamento->nombre}\".",
+            $departamento,
+            $datosPrevios,
+            null
+        );
+
+        $departamento->delete();
+        return back()->with('success', 'Departamento eliminado correctamente.');
+    }
+
+    // =====================================
+    // MÓDULO DE PROPIEDADES (MULTIPROPIEDAD)
+    // =====================================
+    public function hotelesIndex() {
+        $hoteles = Hotel::withCount('usuarios')->orderBy('nombre')->get();
+        return view('admin.hoteles.index', compact('hoteles'));
+    }
+
+    public function hotelesCreate() {
+        return view('admin.hoteles.form');
+    }
+
+    public function hotelesStore(Request $request) {
+        $data = $request->validate([
+            'hotel_code' => 'required|string|max:10|unique:hoteles,hotel_code|alpha_dash',
+            'nombre'     => 'required|string|max:255',
+            'tipo'       => 'required|in:hotel,condominio,mixto',
+        ]);
+
+        $data['hotel_code'] = strtoupper($data['hotel_code']);
+
+        $hotel = Hotel::create($data);
+
+        AuditLog::registrar(
+            'propiedad.creada',
+            "Creó la propiedad \"{$hotel->nombre}\" ({$hotel->hotel_code}).",
+            $hotel,
+            null,
+            $hotel->only(['hotel_code', 'nombre', 'tipo'])
+        );
+
+        return redirect()->route('admin.hoteles.index')->with('success', 'Propiedad agregada correctamente.');
+    }
+
+    public function hotelesEdit($id) {
+        $hotel = Hotel::findOrFail($id);
+        return view('admin.hoteles.form', compact('hotel'));
+    }
+
+    public function hotelesUpdate(Request $request, $id) {
+        $hotel = Hotel::findOrFail($id);
+
+        // El código de propiedad no se puede editar: ya está grabado en usuarios
+        // y en cada registro (assets, tickets, etc.) de esa propiedad.
+        $antes = $hotel->only(['nombre', 'tipo']);
+
+        $data = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'tipo'   => 'required|in:hotel,condominio,mixto',
+        ]);
+
+        $hotel->update($data);
+
+        AuditLog::registrar(
+            'propiedad.actualizada',
+            "Editó la propiedad \"{$hotel->hotel_code}\".",
+            $hotel,
+            $antes,
+            $hotel->fresh()->only(['nombre', 'tipo'])
+        );
+
+        return redirect()->route('admin.hoteles.index')->with('success', 'Propiedad actualizada correctamente.');
+    }
+
+    public function hotelesDestroy($id) {
+        $hotel = Hotel::withCount('usuarios')->findOrFail($id);
+
+        if ($hotel->usuarios_count > 0) {
+            return back()->with('error', "No puedes eliminar '{$hotel->nombre}': todavía tiene {$hotel->usuarios_count} usuario(s) asignado(s). Reasígnalos primero.");
+        }
+
+        $datosPrevios = $hotel->only(['hotel_code', 'nombre', 'tipo']);
+
+        AuditLog::registrar(
+            'propiedad.eliminada',
+            "Eliminó la propiedad \"{$hotel->nombre}\" ({$hotel->hotel_code}).",
+            $hotel,
+            $datosPrevios,
+            null
+        );
+
+        $hotel->delete();
+        return back()->with('success', 'Propiedad eliminada correctamente.');
+    }
+
+    // =====================================
+    // SELECTOR DE PROPIEDAD ACTIVA (solo Administrador)
+    // =====================================
+    // El Administrador es el único rol que legítimamente supervisa más de
+    // una propiedad (gerente/técnico/usuario ya están fijos a la suya vía
+    // users.hotel_code). Antes de este cambio no existía forma de que un
+    // Admin cambiara de propiedad en Dashboard/Condominios/Inventario/
+    // Habitaciones: esas pantallas siempre caían al HOTEL_CODE del .env,
+    // sin importar cuántas propiedades hubiera dado de alta en
+    // Admin > Propiedades. Ver Hotel::activoParaUsuario() para la regla.
+    public function propiedadActivaUpdate(Request $request) {
+        $data = $request->validate([
+            'hotel_code' => 'required|string|exists:hoteles,hotel_code',
+        ], [
+            'hotel_code.exists' => 'Esa propiedad ya no existe. Recarga la página e intenta de nuevo.',
+        ]);
+
+        session(['active_hotel_code' => strtoupper($data['hotel_code'])]);
+
+        return back()->with('success', 'Propiedad activa cambiada correctamente.');
+    }
+
+    // =====================================
+    // BITÁCORA DE AUDITORÍA
+    // =====================================
+    public function auditoriaIndex(Request $request) {
+        $query = AuditLog::with('usuario')->latest();
+
+        if ($request->filled('accion')) {
+            $query->where('accion', $request->accion);
+        }
+
+        $logs = $query->paginate(30)->withQueryString();
+
+        // Para el filtro desplegable: acciones distintas ya registradas
+        $acciones = AuditLog::select('accion')->distinct()->orderBy('accion')->pluck('accion');
+
+        return view('admin.auditoria.index', compact('logs', 'acciones'));
+    }
+}

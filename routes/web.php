@@ -154,6 +154,11 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/bitacora', [AdminSettingsController::class, 'auditoriaIndex'])->name('auditoria.index');
 
+        // Selector de propiedad activa (solo Admin: es el único rol que
+        // supervisa más de una propiedad). Ver AdminSettingsController::
+        // propiedadActivaUpdate y Hotel::activoParaUsuario.
+        Route::post('/propiedad-activa', [AdminSettingsController::class, 'propiedadActivaUpdate'])->name('propiedad-activa.update');
+
         // Gestión de áreas y plantillas para el módulo de activos
         Route::resource('activo-plantillas', ActivoPlantillaController::class)
             ->names('activo-plantillas');

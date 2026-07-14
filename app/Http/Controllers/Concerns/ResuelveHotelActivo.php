@@ -2,34 +2,34 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Models\Hotel;
+
 /**
  * Reemplaza el patrón repetido `session('active_hotel_code', env('HOTEL_CODE', ...))`
- * que existía en varios controladores. Ese patrón nunca llegaba a establecerse
- * en ningún lado (no hay ninguna pantalla que haga `session(['active_hotel_code' => ...])`),
- * así que en la práctica siempre caía al valor fijo de .env — es decir, todos
- * los usuarios operaban sobre la misma propiedad sin importar quién iniciara sesión.
+ * que existía en varios controladores.
  *
- * Ahora que cada usuario tiene su propia propiedad asignada (users.hotel_code),
- * este trait centraliza de dónde sale el "hotel activo" para un controlador:
- *  - Usuario normal: su propiedad asignada.
- *  - Administrador: por ahora, la propiedad activa de la instalación (.env),
- *    ya que todavía no existe un selector de "ver todas las propiedades" en
- *    estas pantallas (Condominios/Inventario/Habitaciones/Dashboard). Los
- *    modelos Eloquent con BelongsToHotel ya lo resuelven distinto: el Admin
- *    SÍ ve todas las propiedades ahí porque HotelScope se salta el filtro
- *    para su rol. Aquí sólo cubrimos los controladores que arman su propio
- *    ->where('hotel_code', ...) o usan DB::table() en vez del Eloquent scope.
+ * Cada usuario tiene su propia propiedad asignada (users.hotel_code); ese
+ * sigue siendo el caso para usuario/técnico/gerente. El Administrador es
+ * distinto: supervisa varias propiedades, así que además puede elegir cuál
+ * está viendo desde el selector del menú (ver
+ * AdminSettingsController::propiedadActivaUpdate), que ahora sí guarda la
+ * selección en session('active_hotel_code') — antes esa llave nunca se
+ * llegaba a establecer en ningún lado, así que un Admin quedaba fijo al
+ * HOTEL_CODE del .env sin poder cambiarlo desde estas pantallas
+ * (Dashboard/Condominios/Inventario/Habitaciones), aunque hubiera dado de
+ * alta más propiedades en Admin > Propiedades.
+ *
+ * La regla real vive en Hotel::activoParaUsuario() para que el selector del
+ * layout (AppServiceProvider) use exactamente la misma lógica que estos
+ * controladores, que arman su propio ->where('hotel_code', ...) o usan
+ * DB::table() en vez del Eloquent scope. Los modelos con BelongsToHotel ya
+ * resuelven la visibilidad del Admin de otra forma (HotelScope se salta el
+ * filtro para su rol) y no dependen de este trait.
  */
 trait ResuelveHotelActivo
 {
     protected function hotelActivo(): string
     {
-        $user = auth()->user();
-
-        if ($user && $user->hotel_code) {
-            return strtoupper($user->hotel_code);
-        }
-
-        return strtoupper(env('HOTEL_CODE', 'HEMZT'));
+        return Hotel::activoParaUsuario(auth()->user());
     }
 }

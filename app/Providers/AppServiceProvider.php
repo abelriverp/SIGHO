@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Hotel;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,6 +35,22 @@ class AppServiceProvider extends ServiceProvider
                     ->withErrors(['email' => 'Demasiados intentos. Espera un minuto antes de volver a intentarlo.'])
                     ->onlyInput('email');
             });
+        });
+
+        // Comparte la lista de propiedades con el layout para el selector de
+        // "propiedad activa" del Admin (ver Hotel::activoParaUsuario y
+        // AdminSettingsController::propiedadActivaUpdate). Solo se consulta
+        // cuando hay un Admin autenticado: el resto de roles está fijo a su
+        // propia propiedad y no necesita este dato en cada request.
+        View::composer('layouts.app', function ($view) {
+            $user = auth()->user();
+
+            if ($user && $user->isAdmin()) {
+                $view->with([
+                    'hotelesDisponibles'      => Hotel::orderBy('nombre')->get(),
+                    'hotelActivoSeleccionado' => Hotel::activoParaUsuario($user),
+                ]);
+            }
         });
     }
 }
