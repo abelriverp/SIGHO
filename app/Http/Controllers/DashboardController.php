@@ -6,12 +6,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Concerns\ResuelveHotelActivo;
+use App\Services\DashboardMetricsService;
 
 class DashboardController extends Controller
 {
     use ResuelveHotelActivo;
 
-    public function index()
+    public function index(DashboardMetricsService $dashboardMetrics)
     {
         // 1. Obtener el usuario autenticado
         $user = Auth::user();
@@ -96,14 +97,21 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // 4. Retornar la vista con los datos ya filtrados de forma personalizada
+        // 4. Datos para las gráficas del panel. Usa el mismo criterio de
+        // visibilidad por rol que AlertasService/TicketController (admin y
+        // gerente ven todo; técnico solo su departamento; usuario solo lo
+        // suyo), filtrado a la misma $hotelActivo que las tarjetas de arriba.
+        $graficas = $dashboardMetrics->metricas($user, $hotelActivo);
+
+        // 5. Retornar la vista con los datos ya filtrados de forma personalizada
         return view('dashboard', compact(
             'hotelActivo',
             'ticketsAbiertos',
             'ticketsTotales',
             'suministrosBajos',
             'totalEquipos',
-            'ultimosTickets'
+            'ultimosTickets',
+            'graficas'
         ));
     }
 }

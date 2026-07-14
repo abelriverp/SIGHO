@@ -182,5 +182,187 @@
 
     </div>
 
+    <div class="mt-8">
+        <div class="mb-4">
+            <h3 class="text-base font-semibold leading-6 text-gray-900">Analítica de Tickets</h3>
+            <p class="text-xs text-gray-500">
+                @if(auth()->user()->puedeVerTodos())
+                    Datos de toda la propiedad ({{ $hotelActivo }})
+                @elseif(auth()->user()->isTecnico())
+                    Datos del departamento: {{ auth()->user()->departamento ?? 'sin asignar' }}
+                @else
+                    Solo tus propios tickets
+                @endif
+            </p>
+        </div>
+
+        @if($graficas['total'] > 0)
+            <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-100">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-4">Tickets por Estado</h4>
+                    <div class="relative h-64">
+                        <canvas id="chartTicketsEstado"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-100">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-1">Tiempo Promedio de Resolución</h4>
+                    <p class="text-xs text-gray-400 mb-4">Horas transcurridas entre apertura y resolución, por departamento</p>
+                    <div class="relative h-64">
+                        <canvas id="chartTiempoDepartamento"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-100 lg:col-span-2">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-1">Tendencia Semanal</h4>
+                    <p class="text-xs text-gray-400 mb-4">Tickets creados vs. resueltos en las últimas {{ count($graficas['tendenciaTickets']) }} semanas</p>
+                    <div class="relative h-72">
+                        <canvas id="chartTendenciaTickets"></canvas>
+                    </div>
+                </div>
+
+                @if(count($graficas['rankingTecnicos']) > 0)
+                    <div class="bg-white p-6 rounded-lg shadow border border-gray-100 lg:col-span-2">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-1">Ranking de Técnicos</h4>
+                        <p class="text-xs text-gray-400 mb-4">Tickets resueltos y tiempo promedio de resolución</p>
+                        <div class="relative h-72">
+                            <canvas id="chartRankingTecnicos"></canvas>
+                        </div>
+                    </div>
+                @endif
+
+            </div>
+        @else
+            <div class="bg-white p-6 rounded-lg shadow border border-gray-100 text-center text-sm text-gray-400">
+                Aún no hay tickets suficientes para mostrar gráficas.
+            </div>
+        @endif
+    </div>
+
 </div>
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const graficas = @json($graficas);
+
+    const paletaEstados = {
+        'Abierto':   '#ef4444',
+        'Reabierto': '#f59e0b',
+        'Resuelto':  '#3b82f6',
+        'Cerrado':   '#10b981',
+    };
+    const colorDefault = '#94a3b8';
+
+    const elEstado = document.getElementById('chartTicketsEstado');
+    if (elEstado && graficas.ticketsPorEstado) {
+        const labels = Object.keys(graficas.ticketsPorEstado);
+        new Chart(elEstado, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: Object.values(graficas.ticketsPorEstado),
+                    backgroundColor: labels.map(s => paletaEstados[s] || colorDefault),
+                    borderWidth: 0,
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+            },
+        });
+    }
+
+    const elDepto = document.getElementById('chartTiempoDepartamento');
+    if (elDepto && graficas.tiempoPorDepartamento && graficas.tiempoPorDepartamento.length) {
+        new Chart(elDepto, {
+            type: 'bar',
+            data: {
+                labels: graficas.tiempoPorDepartamento.map(d => d.departamento),
+                datasets: [{
+                    label: 'Horas promedio',
+                    data: graficas.tiempoPorDepartamento.map(d => d.horas_promedio),
+                    backgroundColor: '#6366f1',
+                    borderRadius: 4,
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, title: { display: true, text: 'Horas' } } },
+            },
+        });
+    } else if (elDepto) {
+        elDepto.closest('.relative').innerHTML = '<p class="text-xs text-gray-400 text-center pt-20">Sin tickets resueltos todavía.</p>';
+    }
+
+    const elTendencia = document.getElementById('chartTendenciaTickets');
+    if (elTendencia && graficas.tendenciaTickets) {
+        new Chart(elTendencia, {
+            type: 'line',
+            data: {
+                labels: graficas.tendenciaTickets.map(s => s.semana),
+                datasets: [
+                    {
+                        label: 'Creados',
+                        data: graficas.tendenciaTickets.map(s => s.creados),
+                        borderColor: '#6366f1',
+                        backgroundColor: '#6366f1',
+                        tension: 0.3,
+                    },
+                    {
+                        label: 'Resueltos',
+                        data: graficas.tendenciaTickets.map(s => s.resueltos),
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b981',
+                        tension: 0.3,
+                    },
+                ],
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            },
+        });
+    }
+
+    const elRanking = document.getElementById('chartRankingTecnicos');
+    if (elRanking && graficas.rankingTecnicos && graficas.rankingTecnicos.length) {
+        new Chart(elRanking, {
+            type: 'bar',
+            data: {
+                labels: graficas.rankingTecnicos.map(t => t.nombre),
+                datasets: [
+                    {
+                        label: 'Tickets resueltos',
+                        data: graficas.rankingTecnicos.map(t => t.total),
+                        backgroundColor: '#3b82f6',
+                        yAxisID: 'y',
+                        borderRadius: 4,
+                    },
+                    {
+                        label: 'Horas promedio',
+                        data: graficas.rankingTecnicos.map(t => t.horas_promedio),
+                        backgroundColor: '#f59e0b',
+                        yAxisID: 'y1',
+                        borderRadius: 4,
+                    },
+                ],
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y:  { beginAtZero: true, position: 'left', title: { display: true, text: 'Tickets' } },
+                    y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Horas' }, grid: { drawOnChartArea: false } },
+                },
+            },
+        });
+    }
+});
+</script>
+@endpush
 @endsection

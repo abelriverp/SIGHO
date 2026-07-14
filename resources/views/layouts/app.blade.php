@@ -239,5 +239,7 @@
     <main class="container mx-auto mt-8 mb-16 px-4">
         @yield('content')
     </main>
+
+    @stack('scripts')
 </body>
 </html>
