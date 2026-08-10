@@ -6,7 +6,7 @@
     <div class="md:flex md:items-center md:justify-between mb-8">
         <div class="min-w-0 flex-1">
             <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl tracking-tight">
-                Panel de Control — SIGHO <span class="text-sm font-normal text-gray-500">v1.5</span>
+                Panel de Control — SIGHO <span class="text-sm font-normal text-gray-500">v1.6</span>
             </h2>
             <p class="text-sm text-gray-500 mt-1">
                 Monitoreo general de operaciones y servicios para la propiedad:
