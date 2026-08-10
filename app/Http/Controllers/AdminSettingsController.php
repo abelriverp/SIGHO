@@ -10,6 +10,7 @@ use App\Models\Modulo;
 use App\Models\Hotel;
 use App\Models\AuditLog;
 use App\Notifications\NuevoUsuarioCredencialesNotification;
+use App\Notifications\PasswordRestablecidaNotification;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
@@ -90,6 +91,9 @@ class AdminSettingsController extends Controller
         // Snapshot ANTES de aplicar los cambios, para la bitácora.
         $antes = $user->only(['name', 'email', 'role', 'hotel_code', 'departamento', 'area']);
         $cambioPassword = ! empty($data['password']);
+        // Se guarda en claro ANTES de que $user->update() la hashee, para
+        // poder mandársela al usuario por correo (igual que en usersStore).
+        $passwordTemporal = $data['password'] ?? null;
 
         if ($data['role'] !== 'tecnico') {
             $data['departamento'] = null;
@@ -137,7 +141,26 @@ class AdminSettingsController extends Controller
             $despues
         );
 
-        return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado correctamente.');
+        $mensaje = 'Usuario actualizado correctamente.';
+
+        // Antes esto no existía: se le asignaba nueva contraseña al usuario
+        // desde Editar y nunca se le avisaba por correo (a diferencia del
+        // alta de un usuario nuevo, que sí notifica). El usuario se quedaba
+        // sin saber su contraseña temporal.
+        if ($cambioPassword && $passwordTemporal) {
+            try {
+                $user->notify(new PasswordRestablecidaNotification($passwordTemporal));
+                $mensaje .= ' Se enviaron sus nuevas credenciales por correo.';
+            } catch (\Throwable $e) {
+                Log::error('No se pudo enviar el correo de contraseña restablecida', [
+                    'user_id' => $user->id,
+                    'error'   => $e->getMessage(),
+                ]);
+                $mensaje .= ' No se pudo enviar el correo con la nueva contraseña; compártela manualmente.';
+            }
+        }
+
+        return redirect()->route('admin.users.index')->with('success', $mensaje);
     }
 
     public function usersDestroy(User $user) {
