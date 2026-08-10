@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Hotel;
+use Carbon\Carbon;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
@@ -23,6 +24,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Carbon no sigue automáticamente el locale de la app: sin esto,
+        // diffForHumans() (ej. "abierto desde..." en la campana de Alertas)
+        // sale en inglés aunque config('app.locale') ya esté en 'es'. Se
+        // amarra a config('app.locale') en vez de fijar 'es' a mano para que
+        // no se vuelva a desincronizar si el locale de la app cambia.
+        Carbon::setLocale(config('app.locale'));
+
         // Límite de intentos de login: por email+IP (no solo por IP) para que
         // un atacante no pueda "repartir" intentos entre varias IPs sin límite,
         // y para que un vecino en la misma red/oficina no se vea bloqueado por
