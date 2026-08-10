@@ -37,6 +37,20 @@ class AppServiceProvider extends ServiceProvider
             });
         });
 
+        // Portal de huésped por QR (sin login, ver GuestPortalController):
+        // por token+IP para no dejar que alguien spamee tickets desde un
+        // solo enlace, sin bloquear a otra habitación que use su propio
+        // token normalmente.
+        RateLimiter::for('guest-request', function ($request) {
+            $llave = $request->route('token') . '|' . $request->ip();
+
+            return Limit::perHour(10)->by($llave)->response(function ($request, array $headers) {
+                return back()
+                    ->withErrors(['tipo_solicitud' => 'Se enviaron demasiadas solicitudes desde este enlace. Espera un momento e intenta de nuevo, o contacta directamente a recepción.'])
+                    ->withInput();
+            });
+        });
+
         // Comparte la lista de propiedades con el layout para el selector de
         // "propiedad activa" del Admin (ver Hotel::activoParaUsuario y
         // AdminSettingsController::propiedadActivaUpdate). Solo se consulta

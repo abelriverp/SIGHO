@@ -101,6 +101,11 @@ class UnidadController extends Controller
     public function destroy($id)
     {
         $unidad = $this->queryBase()->findOrFail($id);
+
+        if (!auth()->user()->can('delete', $unidad)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar unidades.');
+        }
+
         $unidad->delete();
 
         return back()->with('success', 'Unidad eliminada.');

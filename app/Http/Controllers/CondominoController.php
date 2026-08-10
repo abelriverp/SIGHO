@@ -97,6 +97,11 @@ class CondominoController extends Controller
     public function destroy($id)
     {
         $condomino = $this->queryBase()->findOrFail($id);
+
+        if (!auth()->user()->can('delete', $condomino)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar condóminos.');
+        }
+
         $condomino->delete();
 
         return back()->with('success', 'Condómino eliminado.');

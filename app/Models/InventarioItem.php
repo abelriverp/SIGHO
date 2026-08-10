@@ -24,10 +24,12 @@ class InventarioItem extends Model
         'imagen_path',
         'pdf_path',
         'activo',
+        'disponible_huesped',
     ];
 
     protected $casts = [
-        'activo'          => 'boolean',
+        'activo'              => 'boolean',
+        'disponible_huesped'  => 'boolean',
         'cantidad_actual' => 'float',
         'cantidad'        => 'float',
         'stock_minimo'    => 'float',

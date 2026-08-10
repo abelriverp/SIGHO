@@ -9,8 +9,10 @@ use App\Models\Ticket;
 use App\Models\Modulo;
 use App\Models\Hotel;
 use App\Models\AuditLog;
+use App\Notifications\NuevoUsuarioCredencialesNotification;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class AdminSettingsController extends Controller
 {
@@ -36,10 +38,12 @@ class AdminSettingsController extends Controller
             'password'     => 'required|string|min:6',
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
             'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
+            'area'         => 'nullable|string|exists:areas,nombre',
             'hotel_code'   => 'nullable|string|required_unless:role,admin|exists:hoteles,hotel_code',
         ]);
 
         $data['must_change_password'] = true;
+        $passwordTemporal = $data['password'];
 
         $user = User::create($data);
 
@@ -48,10 +52,23 @@ class AdminSettingsController extends Controller
             "Creó al usuario \"{$user->name}\" ({$user->email}) con rol {$user->role}.",
             $user,
             null,
-            $user->only(['name', 'email', 'role', 'hotel_code', 'departamento'])
+            $user->only(['name', 'email', 'role', 'hotel_code', 'departamento', 'area'])
         );
 
-        return redirect()->route('admin.users.index')->with('success', 'Usuario creado correctamente.');
+        $mensaje = 'Usuario creado correctamente.';
+
+        try {
+            $user->notify(new NuevoUsuarioCredencialesNotification($passwordTemporal));
+            $mensaje .= ' Se enviaron sus credenciales por correo.';
+        } catch (\Throwable $e) {
+            Log::error('No se pudo enviar el correo de credenciales al nuevo usuario', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+            $mensaje .= ' No se pudo enviar el correo de credenciales; compártelas manualmente.';
+        }
+
+        return redirect()->route('admin.users.index')->with('success', $mensaje);
     }
 
     public function usersEdit(User $user) {
@@ -65,12 +82,13 @@ class AdminSettingsController extends Controller
             'email'        => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
             'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
+            'area'         => 'nullable|string|exists:areas,nombre',
             'password'     => 'nullable|string|min:6',
             'hotel_code'   => 'nullable|string|required_unless:role,admin|exists:hoteles,hotel_code',
         ]);
 
         // Snapshot ANTES de aplicar los cambios, para la bitácora.
-        $antes = $user->only(['name', 'email', 'role', 'hotel_code', 'departamento']);
+        $antes = $user->only(['name', 'email', 'role', 'hotel_code', 'departamento', 'area']);
         $cambioPassword = ! empty($data['password']);
 
         if ($data['role'] !== 'tecnico') {
@@ -94,7 +112,7 @@ class AdminSettingsController extends Controller
 
         $user->update($data);
 
-        $despues = $user->fresh()->only(['name', 'email', 'role', 'hotel_code', 'departamento']);
+        $despues = $user->fresh()->only(['name', 'email', 'role', 'hotel_code', 'departamento', 'area']);
 
         $notas = [];
         if ($antes['role'] !== $despues['role']) {
@@ -102,6 +120,9 @@ class AdminSettingsController extends Controller
         }
         if ($antes['hotel_code'] !== $despues['hotel_code']) {
             $notas[] = "propiedad de \"" . ($antes['hotel_code'] ?? 'ninguna') . "\" a \"" . ($despues['hotel_code'] ?? 'ninguna') . "\"";
+        }
+        if ($antes['area'] !== $despues['area']) {
+            $notas[] = "área de \"" . ($antes['area'] ?? 'ninguna') . "\" a \"" . ($despues['area'] ?? 'ninguna') . "\"";
         }
         if ($cambioPassword) {
             $notas[] = 'se le asignó una nueva contraseña';
@@ -125,7 +146,7 @@ class AdminSettingsController extends Controller
         }
 
         // Snapshot antes de borrar: después ya no habrá registro del usuario.
-        $datosPrevios = $user->only(['name', 'email', 'role', 'hotel_code', 'departamento']);
+        $datosPrevios = $user->only(['name', 'email', 'role', 'hotel_code', 'departamento', 'area']);
 
         AuditLog::registrar(
             'usuario.eliminado',

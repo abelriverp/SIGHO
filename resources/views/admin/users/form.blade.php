@@ -101,6 +101,23 @@
                 <p class="text-[10px] text-slate-400 mt-1 italic">Solo verá tickets enviados a este departamento.</p>
             </div>
 
+            {{-- Área de origen del usuario: de dónde reporta (recepción, ama de
+                 llaves, sistemas, etc.). Se fija aquí en vez de preguntarla en
+                 cada ticket, para que quede consistente en reportes y filtros.
+                 No aplica a Administradores (ven todo, igual que Propiedad). --}}
+            <div id="campo-area" style="{{ (isset($user) && $user->role == 'admin') ? 'display:none' : '' }}">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Área</label>
+                <select name="area" class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
+                    <option value="">Selecciona...</option>
+                    @foreach(\App\Models\Area::orderBy('nombre')->get() as $areaOpcion)
+                        <option value="{{ $areaOpcion->nombre }}" {{ (isset($user) && $user->area == $areaOpcion->nombre) ? 'selected' : '' }}>
+                            {{ $areaOpcion->nombre }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="text-[10px] text-slate-400 mt-1 italic">Área desde la que reporta fallas/requerimientos. Se prellenará sola en su formulario de tickets.</p>
+            </div>
+
             <div class="flex justify-end gap-3 pt-4">
                 <a href="{{ route('admin.users.index') }}" class="bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded shadow hover:bg-gray-400">Cancelar</a>
                 <button type="submit" class="bg-[#041b32] text-white font-bold py-2 px-8 rounded shadow hover:opacity-90">Guardar</button>
@@ -142,6 +159,11 @@
         // El Administrador ve todas las propiedades: no necesita elegir una
         const campoHotel = document.getElementById('campo-hotel');
         campoHotel.style.display = this.value === 'admin' ? 'none' : 'block';
+
+        // El Administrador tampoco necesita área fija: ve todo sin importar
+        // desde dónde reporte.
+        const campoArea = document.getElementById('campo-area');
+        campoArea.style.display = this.value === 'admin' ? 'none' : 'block';
     });
 </script>
 @endsection

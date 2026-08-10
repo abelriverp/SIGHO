@@ -31,14 +31,22 @@
 
                 <div>
                     <label class="block text-sm font-bold text-slate-700 mb-1">Tu Área o Departamento</label>
-                    <select name="area" required class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
-                        <option value="" disabled selected>Selecciona tu área...</option>
-                        @foreach(\App\Models\Area::orderBy('nombre')->get() as $area)
-                            <option value="{{ $area->nombre }}" {{ old('area') == $area->nombre ? 'selected' : '' }}>
-                                {{ $area->nombre }}
-                            </option>
-                        @endforeach
-                    </select>
+                    @if(auth()->user()->area)
+                        {{-- Fija desde tu cuenta (la configura un administrador en
+                             Usuarios), para que no cambie de un ticket a otro. --}}
+                        <input type="text" name="area" value="{{ auth()->user()->area }}" readonly
+                            class="w-full bg-gray-100 border border-slate-300 rounded-md py-2 px-3 text-slate-500 cursor-not-allowed">
+                    @else
+                        <select name="area" required class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
+                            <option value="" disabled selected>Selecciona tu área...</option>
+                            @foreach(\App\Models\Area::orderBy('nombre')->get() as $area)
+                                <option value="{{ $area->nombre }}" {{ old('area') == $area->nombre ? 'selected' : '' }}>
+                                    {{ $area->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[10px] text-amber-600 mt-1 italic">Tu cuenta aún no tiene un área asignada. Pide a un administrador que la configure en Usuarios; mientras tanto, selecciónala aquí.</p>
+                    @endif
                 </div>
             </div>
 
@@ -66,100 +74,28 @@
                 </div>
             </div>
 
-            {{-- Sección dinámica exclusiva de Sistemas --}}
+            {{-- Sección dinámica exclusiva de Sistemas — pintada por JS a partir
+                 del catálogo único config/tickets_sistemas.php --}}
             <div id="sistemasExtra" class="hidden bg-blue-50/50 border border-blue-200 rounded-lg p-4 space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-1">Tipo de solicitud a Sistemas</label>
-                    <select id="tipoSolicitudSistemas" name="tipo_solicitud_sistemas"
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Tipo de solicitud</label>
+                    <select id="tipoSolicitudSelect" name="tipo_solicitud"
                         class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
                         <option value="" selected>Selecciona una opción...</option>
-                        <option value="alta_colaborador" {{ old('tipo_solicitud_sistemas') == 'alta_colaborador' ? 'selected' : '' }}>Dar alta de colaborador</option>
-                        <option value="modificacion_sistema" {{ old('tipo_solicitud_sistemas') == 'modificacion_sistema' ? 'selected' : '' }}>Modificaciones de sistema</option>
-                        <option value="otro" {{ old('tipo_solicitud_sistemas') == 'otro' ? 'selected' : '' }}>Otro (especificar)</option>
                     </select>
                 </div>
 
-                {{-- OTRO --}}
-                <div id="seccionOtro" class="hidden">
-                    <label class="block text-sm font-bold text-slate-700 mb-1">Especifica el problema</label>
-                    <textarea name="otro_detalle" rows="3"
-                        class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]"
-                        placeholder="Describe el problema o solicitud...">{{ old('otro_detalle') }}</textarea>
+                <div id="sistemaWrapper" class="hidden">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Sistema</label>
+                    <select id="sistemaSelect" name="sistema"
+                        class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
+                        <option value="" selected>Selecciona un sistema...</option>
+                    </select>
                 </div>
 
-                {{-- ALTA DE COLABORADOR --}}
-                <div id="seccionAlta" class="hidden space-y-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-1">Escoge el aplicativo</label>
-                        <select id="aplicativoSelect" name="aplicativo"
-                            class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                            <option value="" selected>Selecciona el aplicativo...</option>
-                            <option value="symphony" {{ old('aplicativo') == 'symphony' ? 'selected' : '' }}>Symphony</option>
-                            <option value="opera" {{ old('aplicativo') == 'opera' ? 'selected' : '' }}>Opera</option>
-                            <option value="mail" {{ old('aplicativo') == 'mail' ? 'selected' : '' }}>Mail</option>
-                            <option value="sap" {{ old('aplicativo') == 'sap' ? 'selected' : '' }}>SAP</option>
-                            <option value="wintb" {{ old('aplicativo') == 'wintb' ? 'selected' : '' }}>WinTB</option>
-                            <option value="guesthotel" {{ old('aplicativo') == 'guesthotel' ? 'selected' : '' }}>GuestHotel</option>
-                        </select>
-                    </div>
+                <p id="notaTipoSolicitud" class="hidden text-xs text-blue-700 bg-blue-100 border border-blue-200 rounded p-2"></p>
 
-                    <div id="camposAplicativo" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">No. Colaborador</label>
-                            <input type="text" name="no_colaborador" value="{{ old('no_colaborador') }}"
-                                class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">Nombre Completo</label>
-                            <input type="text" name="nombre_completo" value="{{ old('nombre_completo') }}"
-                                class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">Puesto</label>
-                            <input type="text" name="puesto" value="{{ old('puesto') }}"
-                                class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                        </div>
-                        <div id="campoPerfilReplicar" class="hidden">
-                            <label class="block text-sm font-bold text-slate-700 mb-1">Perfil a replicar <span class="text-slate-400 font-normal">(Opcional)</span></label>
-                            <input type="text" name="perfil_replicar" value="{{ old('perfil_replicar') }}"
-                                class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                        </div>
-                        <div id="campoCorreoInstitucional" class="hidden">
-                            <label class="block text-sm font-bold text-slate-700 mb-1">Correo electrónico institucional</label>
-                            <input type="email" name="correo_institucional" value="{{ old('correo_institucional') }}"
-                                placeholder="usuario@hotelesemporio.com"
-                                class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                        </div>
-                        <div id="campoJefeDirecto" class="hidden">
-                            <label class="block text-sm font-bold text-slate-700 mb-1">Jefe Directo</label>
-                            <input type="text" name="jefe_directo" value="{{ old('jefe_directo') }}"
-                                class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- MODIFICACIONES DE SISTEMA --}}
-                <div id="seccionMod" class="hidden space-y-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-1">Escoge el aplicativo</label>
-                        <select id="aplicativoModSelect" name="aplicativo_mod"
-                            class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                            <option value="" selected>Selecciona el aplicativo...</option>
-                            <option value="symphony" {{ old('aplicativo_mod') == 'symphony' ? 'selected' : '' }}>Symphony</option>
-                            <option value="opera" {{ old('aplicativo_mod') == 'opera' ? 'selected' : '' }}>Opera</option>
-                            <option value="mail" {{ old('aplicativo_mod') == 'mail' ? 'selected' : '' }}>Mail</option>
-                            <option value="sap" {{ old('aplicativo_mod') == 'sap' ? 'selected' : '' }}>SAP</option>
-                            <option value="wintb" {{ old('aplicativo_mod') == 'wintb' ? 'selected' : '' }}>WinTB</option>
-                            <option value="guesthotel" {{ old('aplicativo_mod') == 'guesthotel' ? 'selected' : '' }}>GuestHotel</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-1">Detalle de la modificación</label>
-                        <textarea name="detalle_modificacion" rows="3"
-                            class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]"
-                            placeholder="Describe qué cambio necesitas...">{{ old('detalle_modificacion') }}</textarea>
-                    </div>
-                </div>
+                <div id="camposDinamicos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
 
             {{-- Nivel de urgencia --}}
@@ -208,7 +144,7 @@
                     class="w-full text-sm text-slate-500 file:bg-[#041b32] file:text-white file:py-2 file:px-4 file:rounded file:border-0 cursor-pointer">
                 <p class="text-[10px] text-slate-400 mt-1 italic">
                     Puedes seleccionar varias fotos a la vez (mantén Ctrl o Shift al hacer clic), o volver a hacer clic en el botón para ir agregando de una en una.
-                    Máximo 5 archivos, 6 MB cada uno. Formatos: JPG, PNG, MP4, MOV.
+                    Máximo 6 archivos, 6 MB cada uno. Formatos: JPG, PNG, MP4, MOV.
                 </p>
 
                 {{-- Previsualización con opción de quitar --}}
@@ -231,7 +167,7 @@
                         </div>
                     </template>
                 </div>
-                <p class="text-[10px] text-slate-400 mt-1" x-show="archivos.length > 0" x-text="archivos.length + ' de 5 archivos seleccionados'"></p>
+                <p class="text-[10px] text-slate-400 mt-1" x-show="archivos.length > 0" x-text="archivos.length + ' de 6 archivos seleccionados'"></p>
             </div>
 
             {{-- Botones --}}
@@ -262,9 +198,9 @@
                 const nuevos = Array.from(event.target.files);
                 let combinados = this.archivos.map(a => a.file).concat(nuevos);
 
-                if (combinados.length > 5) {
-                    alert('Máximo 5 archivos. Se tomarán solo los primeros 5.');
-                    combinados = combinados.slice(0, 5);
+                if (combinados.length > 6) {
+                    alert('Máximo 6 archivos. Se tomarán solo los primeros 6.');
+                    combinados = combinados.slice(0, 6);
                 }
 
                 this.archivos = combinados.map(file => ({
@@ -291,89 +227,139 @@
         };
     }
 
-    const departamentoSelect       = document.getElementById('departamentoDestino');
-    const sistemasExtra            = document.getElementById('sistemasExtra');
-    const tipoSolicitudSistemas    = document.getElementById('tipoSolicitudSistemas');
-    const seccionOtro              = document.getElementById('seccionOtro');
-    const seccionAlta              = document.getElementById('seccionAlta');
-    const seccionMod               = document.getElementById('seccionMod');
-    const aplicativoSelect         = document.getElementById('aplicativoSelect');
-    const aplicativoModSelect      = document.getElementById('aplicativoModSelect');
-    const camposAplicativo         = document.getElementById('camposAplicativo');
-    const campoPerfilReplicar      = document.getElementById('campoPerfilReplicar');
-    const campoCorreoInstitucional = document.getElementById('campoCorreoInstitucional');
-    const campoJefeDirecto         = document.getElementById('campoJefeDirecto');
+    // Catálogo dinámico de tipo de solicitud/sistema, administrable desde
+    // Tickets -> Categorías de solicitud (App\Models\TicketCategoria). Ya
+    // no es exclusivo de "Sistemas": viene agrupado por departamento, y el
+    // bloque solo se muestra si el departamento elegido tiene categorías
+    // activas para esta propiedad. Este mismo JSON es lo que valida el
+    // controlador, así el formulario nunca puede desincronizarse de lo que
+    // el backend acepta. Se navega Tipo -> Sistema: algunos tipos (ej.
+    // "Otra falla / Otro") no tienen 'sistemas' y van directo a sus 'campos'.
+    const catalogoPorDepartamento = @json($catalogoPorDepartamento ?? []);
 
-    const otroDetalle          = document.querySelector('textarea[name="otro_detalle"]');
-    const noColaborador        = document.querySelector('input[name="no_colaborador"]');
-    const nombreCompleto       = document.querySelector('input[name="nombre_completo"]');
-    const puesto                = document.querySelector('input[name="puesto"]');
-    const correoInstitucional  = document.querySelector('input[name="correo_institucional"]');
-    const jefeDirecto          = document.querySelector('input[name="jefe_directo"]');
-    const detalleModificacion  = document.querySelector('textarea[name="detalle_modificacion"]');
+    const departamentoSelect  = document.getElementById('departamentoDestino');
+    const sistemasExtra       = document.getElementById('sistemasExtra');
+    const tipoSolicitudSelect = document.getElementById('tipoSolicitudSelect');
+    const sistemaWrapper      = document.getElementById('sistemaWrapper');
+    const sistemaSelect       = document.getElementById('sistemaSelect');
+    const notaTipoSolicitud   = document.getElementById('notaTipoSolicitud');
+    const camposDinamicos     = document.getElementById('camposDinamicos');
 
-    function actualizarRequeridos() {
-        const esSistemas = departamentoSelect.value === 'Sistemas';
-        const tipo = esSistemas ? tipoSolicitudSistemas.value : '';
+    const oldTipoSolicitud = @json(old('tipo_solicitud'));
+    const oldSistema        = @json(old('sistema'));
+    const oldCampos          = @json(old('campos', []));
 
-        tipoSolicitudSistemas.required = esSistemas;
-        otroDetalle.required = (tipo === 'otro');
-
-        const esAlta = (tipo === 'alta_colaborador');
-        aplicativoSelect.required = esAlta;
-        const aplicativo = esAlta ? aplicativoSelect.value : '';
-        const mostrarCampos = esAlta && aplicativo !== '';
-
-        noColaborador.required  = mostrarCampos;
-        nombreCompleto.required = mostrarCampos;
-        puesto.required          = mostrarCampos;
-        correoInstitucional.required = (mostrarCampos && aplicativo === 'sap');
-        jefeDirecto.required         = (mostrarCampos && aplicativo === 'mail');
-
-        const esMod = (tipo === 'modificacion_sistema');
-        aplicativoModSelect.required = esMod;
-        detalleModificacion.required = esMod;
+    // Catálogo del departamento actualmente seleccionado (o {} si no tiene).
+    function catalogoTipos() {
+        return catalogoPorDepartamento[departamentoSelect.value] || {};
     }
 
-    function toggleAplicativo() {
-        const aplicativo = aplicativoSelect.value;
-        const mostrar = aplicativo !== '';
-        camposAplicativo.classList.toggle('hidden', !mostrar);
-        campoPerfilReplicar.classList.toggle('hidden', aplicativo !== 'opera');
-        campoCorreoInstitucional.classList.toggle('hidden', aplicativo !== 'sap');
-        campoJefeDirecto.classList.toggle('hidden', aplicativo !== 'mail');
-        actualizarRequeridos();
+    // Pinta las opciones del select "Tipo de solicitud" a partir del catálogo.
+    function poblarTipos() {
+        tipoSolicitudSelect.innerHTML = '<option value="" selected>Selecciona una opción...</option>';
+        Object.entries(catalogoTipos()).forEach(([clave, tipo]) => {
+            const opt = document.createElement('option');
+            opt.value = clave;
+            opt.textContent = tipo.label;
+            if (clave === oldTipoSolicitud) opt.selected = true;
+            tipoSolicitudSelect.appendChild(opt);
+        });
     }
 
-    function toggleTipoSolicitud() {
-        const tipo = tipoSolicitudSistemas.value;
-        seccionOtro.classList.toggle('hidden', tipo !== 'otro');
-        seccionAlta.classList.toggle('hidden', tipo !== 'alta_colaborador');
-        seccionMod.classList.toggle('hidden', tipo !== 'modificacion_sistema');
-        if (tipo !== 'alta_colaborador') {
-            aplicativoSelect.value = '';
-            toggleAplicativo();
+    // Al elegir un tipo de solicitud: si define 'sistemas', repuebla ese
+    // select; si no (ej. "Otra falla / Otro"), lo oculta y pinta sus
+    // campos directamente.
+    function poblarSistemas() {
+        const tipo = tipoSolicitudSelect.value;
+        sistemaSelect.innerHTML = '<option value="" selected>Selecciona un sistema...</option>';
+        camposDinamicos.innerHTML = '';
+        notaTipoSolicitud.classList.add('hidden');
+
+        const definicion = catalogoTipos()[tipo];
+        const tieneSistemas = definicion && definicion.sistemas;
+        sistemaWrapper.classList.toggle('hidden', !tieneSistemas);
+        sistemaSelect.required = Boolean(tieneSistemas);
+
+        if (!definicion) return;
+
+        if (!tieneSistemas) {
+            poblarCampos();
+            return;
         }
-        actualizarRequeridos();
+
+        Object.entries(definicion.sistemas).forEach(([clave, sistema]) => {
+            const opt = document.createElement('option');
+            opt.value = clave;
+            opt.textContent = sistema.label;
+            if (clave === oldSistema) opt.selected = true;
+            sistemaSelect.appendChild(opt);
+        });
+
+        if (sistemaSelect.value) poblarCampos();
+    }
+
+    // Dibuja los campos (y la nota, si aplica) que correspondan al
+    // tipo/sistema elegidos.
+    function poblarCampos() {
+        camposDinamicos.innerHTML = '';
+        notaTipoSolicitud.classList.add('hidden');
+
+        const tipo    = tipoSolicitudSelect.value;
+        const tipoDef = catalogoTipos()[tipo];
+        if (!tipoDef) return;
+
+        const sistema = sistemaSelect.value;
+        const definicion = tipoDef.sistemas ? tipoDef.sistemas[sistema] : tipoDef;
+        if (!definicion) return;
+
+        definicion.campos.forEach(campo => {
+            const wrapper = document.createElement('div');
+            const valorPrevio = (oldTipoSolicitud === tipo && (!tipoDef.sistemas || oldSistema === sistema))
+                ? (oldCampos?.[campo.name] ?? '')
+                : '';
+
+            if (campo.type === 'textarea') {
+                wrapper.className = 'md:col-span-2';
+                wrapper.innerHTML = `
+                    <label class="block text-sm font-bold text-slate-700 mb-1">${campo.label}</label>
+                    <textarea name="campos[${campo.name}]" rows="3" ${campo.required ? 'required' : ''}
+                        class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]"></textarea>
+                `;
+                wrapper.querySelector('textarea').value = valorPrevio;
+            } else {
+                wrapper.innerHTML = `
+                    <label class="block text-sm font-bold text-slate-700 mb-1">${campo.label}</label>
+                    <input type="${campo.type}" name="campos[${campo.name}]" ${campo.required ? 'required' : ''}
+                        class="w-full bg-white border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
+                `;
+                wrapper.querySelector('input').value = valorPrevio;
+            }
+
+            camposDinamicos.appendChild(wrapper);
+        });
+
+        if (definicion.nota) {
+            notaTipoSolicitud.textContent = 'Nota: ' + definicion.nota;
+            notaTipoSolicitud.classList.remove('hidden');
+        }
     }
 
     function toggleSistemasExtra() {
-        const esSistemas = departamentoSelect.value === 'Sistemas';
-        sistemasExtra.classList.toggle('hidden', !esSistemas);
-        if (!esSistemas) {
-            tipoSolicitudSistemas.value = '';
-            toggleTipoSolicitud();
+        const tieneCategorias = Object.keys(catalogoTipos()).length > 0;
+        sistemasExtra.classList.toggle('hidden', !tieneCategorias);
+        tipoSolicitudSelect.required = tieneCategorias;
+        poblarTipos();
+        if (!tieneCategorias) {
+            tipoSolicitudSelect.value = '';
         }
-        actualizarRequeridos();
+        poblarSistemas();
     }
 
     departamentoSelect.addEventListener('change', toggleSistemasExtra);
-    tipoSolicitudSistemas.addEventListener('change', toggleTipoSolicitud);
-    aplicativoSelect.addEventListener('change', toggleAplicativo);
+    tipoSolicitudSelect.addEventListener('change', poblarSistemas);
+    sistemaSelect.addEventListener('change', poblarCampos);
 
     // Estado inicial (por si el formulario recarga con errores de validación)
     toggleSistemasExtra();
-    if (tipoSolicitudSistemas.value) toggleTipoSolicitud();
-    if (aplicativoSelect.value) toggleAplicativo();
 </script>
 @endsection

@@ -49,7 +49,7 @@
                             <a href="{{ route('admin.users.modulos', $user->id) }}"
                                class="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200">
                                 🧩 Módulos
-                                @php $count = $user->modulos()->count(); @endphp
+                                @php $count = $user->modulos()->where('modulos.activo', true)->count(); @endphp
                                 @if($count > 0)
                                     <span class="ml-1 bg-indigo-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{{ $count }}</span>
                                 @endif

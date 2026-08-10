@@ -132,4 +132,91 @@ class TicketPolicyTest extends TestCase
         $this->assertFalse($tecnico->can('delete', Ticket::class));
         $this->assertFalse($usuario->can('delete', Ticket::class));
     }
+
+    // ── resolve() / reasignar() ─────────────────────────────
+    // Nota: el chequeo de rol general (puedeResponderTickets) se queda
+    // inline en TicketController, no en la Policy — ver docblock de
+    // TicketPolicy. Estas pruebas cubren solo lo que sí vive en la Policy:
+    // las reglas que dependen del ticket puntual (no resolver/reasignar lo
+    // propio, técnico limitado a su departamento).
+
+    public function test_tecnico_cannot_resolve_their_own_reported_ticket(): void
+    {
+        $tecnico = $this->crearUsuario('HEMZT', 'tecnico', ['departamento' => 'Sistemas']);
+        $ticket  = $this->crearTicket($tecnico, ['departamento_destino' => 'Sistemas']);
+
+        $this->assertFalse($tecnico->can('resolve', $ticket));
+    }
+
+    public function test_tecnico_cannot_resolve_a_ticket_from_another_departamento(): void
+    {
+        $tecnico    = $this->crearUsuario('HEMZT', 'tecnico', ['departamento' => 'Sistemas']);
+        $reportante = $this->crearUsuario('HEMZT');
+        $ticket     = $this->crearTicket($reportante, ['departamento_destino' => 'Mantenimiento']);
+
+        $this->assertFalse($tecnico->can('resolve', $ticket));
+    }
+
+    public function test_tecnico_can_resolve_a_ticket_from_their_own_departamento(): void
+    {
+        $tecnico    = $this->crearUsuario('HEMZT', 'tecnico', ['departamento' => 'Sistemas']);
+        $reportante = $this->crearUsuario('HEMZT');
+        $ticket     = $this->crearTicket($reportante, ['departamento_destino' => 'Sistemas']);
+
+        $this->assertTrue($tecnico->can('resolve', $ticket));
+    }
+
+    public function test_admin_cannot_reasignar_a_ticket_they_reported_themselves(): void
+    {
+        $admin  = $this->crearUsuario('HEMZT', 'admin');
+        $ticket = $this->crearTicket($admin, ['departamento_destino' => 'Sistemas']);
+
+        $this->assertFalse($admin->can('reasignar', $ticket));
+    }
+
+    // ── confirmar() / reabrir() ─────────────────────────────
+
+    public function test_only_the_reporter_can_confirm_or_reabrir_a_ticket(): void
+    {
+        $reportante = $this->crearUsuario('HEMZT');
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $ticket     = $this->crearTicket($reportante);
+
+        $this->assertTrue($reportante->can('confirmar', $ticket));
+        $this->assertTrue($reportante->can('reabrir', $ticket));
+
+        // Ni siquiera un Administrador puede confirmar/reabrir en nombre de otro.
+        $this->assertFalse($admin->can('confirmar', $ticket));
+        $this->assertFalse($admin->can('reabrir', $ticket));
+    }
+
+    // ── deshacerResolucion() ─────────────────────────────────
+
+    public function test_deshacer_resolucion_allows_whoever_resolved_it_or_an_admin(): void
+    {
+        $tecnico    = $this->crearUsuario('HEMZT', 'tecnico', ['departamento' => 'Sistemas']);
+        $otroTecnico = $this->crearUsuario('HEMZT', 'tecnico', ['departamento' => 'Sistemas']);
+        $admin      = $this->crearUsuario('HEMZT', 'admin');
+        $reportante = $this->crearUsuario('HEMZT');
+
+        $ticket = $this->crearTicket($reportante, ['departamento_destino' => 'Sistemas', 'resolved_by' => $tecnico->id]);
+
+        $this->assertTrue($tecnico->can('deshacerResolucion', $ticket));
+        $this->assertTrue($admin->can('deshacerResolucion', $ticket));
+        $this->assertFalse($otroTecnico->can('deshacerResolucion', $ticket));
+    }
+
+    // ── agregarNota() ─────────────────────────────────────────
+
+    public function test_regular_user_cannot_agregar_nota_but_tecnico_and_admin_can(): void
+    {
+        $usuario = $this->crearUsuario('HEMZT', 'usuario');
+        $tecnico = $this->crearUsuario('HEMZT', 'tecnico', ['departamento' => 'Sistemas']);
+        $admin   = $this->crearUsuario('HEMZT', 'admin');
+        $ticket  = $this->crearTicket($usuario);
+
+        $this->assertFalse($usuario->can('agregarNota', $ticket));
+        $this->assertTrue($tecnico->can('agregarNota', $ticket));
+        $this->assertTrue($admin->can('agregarNota', $ticket));
+    }
 }

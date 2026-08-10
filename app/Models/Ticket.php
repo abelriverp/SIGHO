@@ -27,6 +27,7 @@ class Ticket extends Model
         'fotos_resolucion',
         'notas_admin',
         'fecha_resolucion',
+        'sla_escalado_at',
         'confirmado_usuario',
         'fecha_confirmacion',
         'motivo_reapertura',
@@ -43,6 +44,7 @@ class Ticket extends Model
         'confirmado_usuario' => 'boolean',
         'fecha_confirmacion' => 'datetime',
         'fecha_resolucion'   => 'datetime',
+        'sla_escalado_at'    => 'datetime',
     ];
 
     // Relación con el usuario que creó el ticket

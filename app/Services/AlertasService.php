@@ -18,21 +18,19 @@ use Illuminate\Support\Collection;
  *
  * Al usar los modelos Eloquent aquí, HotelScope se aplica solo: cada
  * usuario ve nada más las alertas de su propia propiedad (el Admin ve todas).
+ *
+ * "Vencido"/"por vencer" ya NO se calculan aquí: se delegan por completo a
+ * App\Services\SlaService, que reemplaza el umbral fijo por prioridad que
+ * antes vivía hardcodeado en esta clase (HORAS_VENCIDO) y que ahora es
+ * configurable por propiedad/departamento/prioridad desde /tickets/sla.
+ * Se conserva la firma pública de estos métodos sin cambios para no romper
+ * layouts/app.blade.php ni AlertasServiceTest.
  */
 class AlertasService
 {
-    /**
-     * Horas/días que un ticket "Abierto" puede estar sin resolver antes de
-     * considerarse vencido, según su prioridad. Ajustable a futuro sin tocar
-     * el resto del código.
-     */
-    private const HORAS_VENCIDO = [
-        'Alta'  => 24,
-        'Media' => 72,
-        'Baja'  => 168, // 7 días
-    ];
-
-    private const HORAS_VENCIDO_DEFAULT = 72; // prioridad no reconocida -> trato como Media
+    public function __construct(private SlaService $sla)
+    {
+    }
 
     public function stockBajo(User $user, int $limite = 5): Collection
     {
@@ -64,15 +62,22 @@ class AlertasService
 
     public function ticketsVencidos(User $user, int $limite = 5): Collection
     {
-        return $this->scopeTicketsVisibles($user)
-            ->orderBy('created_at')
-            ->limit($limite)
-            ->get();
+        return $this->sla->ticketsVencidos($user, $limite);
     }
 
     public function ticketsVencidosCount(User $user): int
     {
-        return $this->scopeTicketsVisibles($user)->count();
+        return $this->sla->ticketsVencidosCount($user);
+    }
+
+    public function ticketsPorVencer(User $user, int $limite = 5): Collection
+    {
+        return $this->sla->ticketsPorVencer($user, $limite);
+    }
+
+    public function ticketsPorVencerCount(User $user): int
+    {
+        return $this->sla->ticketsPorVencerCount($user);
     }
 
     /**
@@ -101,45 +106,12 @@ class AlertasService
     public function resumen(User $user): array
     {
         return [
-            'stock_bajo'        => $this->stockBajo($user),
-            'stock_bajo_count'  => $this->stockBajoCount($user),
+            'stock_bajo'             => $this->stockBajo($user),
+            'stock_bajo_count'       => $this->stockBajoCount($user),
             'tickets_vencidos'       => $this->ticketsVencidos($user),
             'tickets_vencidos_count' => $this->ticketsVencidosCount($user),
+            'tickets_por_vencer'       => $this->ticketsPorVencer($user),
+            'tickets_por_vencer_count' => $this->ticketsPorVencerCount($user),
         ];
-    }
-
-    /**
-     * Query base de tickets "Abierto y vencido según su prioridad",
-     * respetando quién puede ver qué tickets:
-     *   - admin/gerente: todos los de su propiedad (HotelScope ya filtra).
-     *   - técnico: solo los de su departamento.
-     *   - usuario normal: solo los que él mismo reportó.
-     */
-    private function scopeTicketsVisibles(User $user)
-    {
-        $query = Ticket::query()->where('status', 'Abierto')->where(function ($q) {
-            foreach (self::HORAS_VENCIDO as $prioridad => $horas) {
-                $q->orWhere(function ($sub) use ($prioridad, $horas) {
-                    $sub->where('prioridad', $prioridad)
-                        ->where('created_at', '<=', now()->subHours($horas));
-                });
-            }
-
-            // Prioridad con un valor no reconocido: usar el umbral por defecto.
-            $q->orWhere(function ($sub) {
-                $sub->whereNotIn('prioridad', array_keys(self::HORAS_VENCIDO))
-                    ->where('created_at', '<=', now()->subHours(self::HORAS_VENCIDO_DEFAULT));
-            });
-        });
-
-        if ($user->puedeVerTodos()) {
-            return $query;
-        }
-
-        if ($user->isTecnico()) {
-            return $query->where('departamento_destino', $user->departamento);
-        }
-
-        return $query->where('user_id', $user->id);
     }
 }

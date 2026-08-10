@@ -113,6 +113,43 @@
         </table>
     @endif
 
+    {{-- Mi desempeño (solo técnico) --}}
+    @if($metricas['miDesempeno'])
+        <div class="section-title">Mi Desempeño</div>
+        @if($metricas['miDesempeno']['total'] === 0)
+            <p style="font-size: 11px; color: #94a3b8;">No se resolvieron tickets a tu nombre en el rango seleccionado.</p>
+        @else
+            <table width="100%" cellpadding="6" cellspacing="0">
+                <tr>
+                    <td width="25%">
+                        <div class="kpi-box">
+                            <div class="label">Resueltos por mí</div>
+                            <div class="kpi-numero">{{ $metricas['miDesempeno']['total'] }}</div>
+                        </div>
+                    </td>
+                    <td width="25%">
+                        <div class="kpi-box">
+                            <div class="label">Horas promedio</div>
+                            <div class="kpi-numero">{{ $metricas['miDesempeno']['horas_promedio'] }}</div>
+                        </div>
+                    </td>
+                    <td width="25%">
+                        <div class="kpi-box">
+                            <div class="label">% Dentro de SLA</div>
+                            <div class="kpi-numero">{{ $metricas['miDesempeno']['slaPorcentaje'] }}%</div>
+                        </div>
+                    </td>
+                    <td width="25%">
+                        <div class="kpi-box">
+                            <div class="label">A tiempo</div>
+                            <div class="kpi-numero">{{ $metricas['miDesempeno']['slaCumplidos'] }}/{{ $metricas['miDesempeno']['total'] }}</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        @endif
+    @endif
+
     {{-- Ranking de técnicos --}}
     @if(count($metricas['rankingTecnicos']) > 0)
         <div class="section-title">Ranking de Técnicos</div>

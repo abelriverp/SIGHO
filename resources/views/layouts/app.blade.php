@@ -38,7 +38,7 @@
                             try {
                                 $alertas = app(\App\Services\AlertasService::class)->resumen($user);
                             } catch (\Exception $e) {
-                                $alertas = ['stock_bajo' => collect(), 'stock_bajo_count' => 0, 'tickets_vencidos' => collect(), 'tickets_vencidos_count' => 0];
+                                $alertas = ['stock_bajo' => collect(), 'stock_bajo_count' => 0, 'tickets_vencidos' => collect(), 'tickets_vencidos_count' => 0, 'tickets_por_vencer' => collect(), 'tickets_por_vencer_count' => 0];
                             }
                             $bajoStockCount = $alertas['stock_bajo_count'] ?? 0;
                             $totalAlertas = $bajoStockCount + ($alertas['tickets_vencidos_count'] ?? 0);
@@ -182,6 +182,11 @@
                                 @if($user->puedeVerTodos() || $user->isTecnico())
                                     <a href="{{ route('tickets.reportes') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📊 Reportes / Corte de KPIs</a>
                                 @endif
+                                @if($user->puedeVerTodos())
+                                    <a href="{{ route('tickets.categorias.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">⚙️ Categorías de solicitud</a>
+                                    <a href="{{ route('tickets.sla.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">⏱️ Política de SLA</a>
+                                    <a href="{{ route('puntos-qr.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📱 Portal de huésped (QR)</a>
+                                @endif
                             </div>
                         </div>
                         @endauth
@@ -236,6 +241,16 @@
                                     @if(($alertas['tickets_vencidos_count'] ?? 0) > 0)
                                         <div class="px-4 pt-3 pb-1 text-xs font-bold text-slate-500 uppercase">Tickets vencidos ({{ $alertas['tickets_vencidos_count'] }})</div>
                                         @foreach($alertas['tickets_vencidos'] as $ticket)
+                                            <a href="{{ route('tickets.show', $ticket->id) }}" class="block px-4 py-2 hover:bg-blue-50 text-sm border-t border-gray-50">
+                                                <span class="font-semibold">#{{ $ticket->id }} · {{ $ticket->area }}</span>
+                                                <span class="text-slate-400"> — {{ $ticket->prioridad }}, abierto desde {{ $ticket->created_at->diffForHumans() }}</span>
+                                            </a>
+                                        @endforeach
+                                    @endif
+
+                                    @if(($alertas['tickets_por_vencer_count'] ?? 0) > 0)
+                                        <div class="px-4 pt-3 pb-1 text-xs font-bold text-amber-500 uppercase">Por vencer pronto ({{ $alertas['tickets_por_vencer_count'] }})</div>
+                                        @foreach($alertas['tickets_por_vencer'] as $ticket)
                                             <a href="{{ route('tickets.show', $ticket->id) }}" class="block px-4 py-2 hover:bg-blue-50 text-sm border-t border-gray-50">
                                                 <span class="font-semibold">#{{ $ticket->id }} · {{ $ticket->area }}</span>
                                                 <span class="text-slate-400"> — {{ $ticket->prioridad }}, abierto desde {{ $ticket->created_at->diffForHumans() }}</span>

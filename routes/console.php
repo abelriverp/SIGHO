@@ -11,4 +11,9 @@ Artisan::command('inspire', function () {
  
 // v1.1 — Cierre automático de tickets resueltos sin confirmar tras 72 horas
 Schedule::command('tickets:cerrar-vencidos')->hourly();
+
+// Motor de SLA — escala a admin/gerente los tickets abiertos que rebasaron
+// su tiempo de resolución (ver App\Services\SlaService y
+// App\Console\Commands\EscalarTicketsSla).
+Schedule::command('tickets:escalar-sla')->hourly();
  

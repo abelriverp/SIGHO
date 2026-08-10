@@ -59,6 +59,12 @@ class DashboardMetricsService
             'rankingTecnicos'       => $user->puedeVerTodos()
                 ? $this->rankingTecnicos($tickets)
                 : [],
+            // Contraparte de rankingTecnicos para el propio técnico: su
+            // desglose individual (lo que SÍ le corresponde ver) dentro de
+            // los tickets de su departamento.
+            'miDesempeno'           => $user->isTecnico()
+                ? $this->miDesempeno($tickets, $user)
+                : null,
         ];
     }
 
@@ -116,6 +122,12 @@ class DashboardMetricsService
             'rankingTecnicos'       => $user->puedeVerTodos()
                 ? $this->rankingTecnicos($resueltos)
                 : [],
+            // Desglose individual del propio técnico en este mismo rango:
+            // lo que necesita para su reporte de fin de mes, sin depender
+            // de que alguien le comparta el ranking completo del área.
+            'miDesempeno'           => $user->isTecnico()
+                ? $this->miDesempeno($resueltos, $user)
+                : null,
         ];
     }
 
@@ -211,6 +223,42 @@ class DashboardMetricsService
             ->take(self::MAX_TECNICOS_RANKING)
             ->values()
             ->all();
+    }
+
+    /**
+     * Desglose de UN solo técnico (quien está consultando) dentro del
+     * conjunto de tickets ya visible para él (su propio departamento). Es
+     * la misma cuenta que rankingTecnicos() haría por técnico, pero
+     * calculada solo para $user, para no exponerle el desempeño de sus
+     * compañeros — eso sigue siendo exclusivo de admin/gerente.
+     *
+     * IMPORTANTE: se basa en `resolved_by`, que hoy solo registra quién
+     * marcó el ticket como Resuelto en el sistema, no necesariamente quién
+     * hizo el trabajo en campo si varias personas colaboraron. Es un proxy
+     * razonable mientras no exista asignación individual de tickets.
+     */
+    private function miDesempeno(Collection $tickets, User $user): array
+    {
+        $propios = $tickets
+            ->where('resolved_by', $user->id)
+            ->whereNotNull('fecha_resolucion');
+
+        if ($propios->isEmpty()) {
+            return ['total' => 0, 'horas_promedio' => null, 'slaCumplidos' => 0, 'slaPorcentaje' => null];
+        }
+
+        $cumplidos = $propios->filter(
+            fn ($t) => $this->horasEntre($t->created_at, $t->fecha_resolucion) <= self::SLA_HORAS
+        )->count();
+
+        return [
+            'total'          => $propios->count(),
+            'horas_promedio' => round($propios->avg(
+                fn ($t) => $this->horasEntre($t->created_at, $t->fecha_resolucion)
+            ), 1),
+            'slaCumplidos'   => $cumplidos,
+            'slaPorcentaje'  => round(($cumplidos / $propios->count()) * 100, 1),
+        ];
     }
 
     private function horasEntre(?Carbon $desde, ?Carbon $hasta): ?float

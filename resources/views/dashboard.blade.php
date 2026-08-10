@@ -284,6 +284,38 @@
                     </div>
                 @endif
 
+                {{-- Mi desempeño (solo técnico): contraparte del ranking de
+                     arriba, que es exclusivo de admin/gerente. Mismos datos
+                     que en "Reportes de Tickets", pero de un vistazo aquí. --}}
+                @if($graficas['miDesempeno'])
+                    <div class="bg-white p-6 rounded-lg shadow border border-gray-100 lg:col-span-2">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-1">Mi Desempeño</h4>
+                        <p class="text-xs text-gray-400 mb-4">Tickets de tu departamento que tú marcaste como resueltos</p>
+                        @if($graficas['miDesempeno']['total'] === 0)
+                            <p class="text-sm text-gray-400">No has resuelto tickets en este periodo.</p>
+                        @else
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div class="text-center">
+                                    <p class="text-xs font-bold text-gray-400 uppercase">Resueltos por mí</p>
+                                    <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $graficas['miDesempeno']['total'] }}</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs font-bold text-gray-400 uppercase">Horas prom.</p>
+                                    <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $graficas['miDesempeno']['horas_promedio'] }}</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs font-bold text-gray-400 uppercase">% Dentro de SLA</p>
+                                    <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $graficas['miDesempeno']['slaPorcentaje'] }}%</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-xs font-bold text-gray-400 uppercase">A tiempo</p>
+                                    <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $graficas['miDesempeno']['slaCumplidos'] }} / {{ $graficas['miDesempeno']['total'] }}</p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
             </div>
         @else
             <div class="bg-white p-6 rounded-lg shadow border border-gray-100 text-center text-sm text-gray-400">

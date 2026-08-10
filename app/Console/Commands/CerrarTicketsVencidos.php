@@ -16,7 +16,7 @@ class CerrarTicketsVencidos extends Command
         // Tickets resueltos hace más de 72 horas sin confirmar
         $tickets = Ticket::where('status', 'Resuelto')
             ->where('fecha_resolucion', '<=', now()->subHours(72))
-            ->whereNull('confirmado_usuario')
+            ->where('confirmado_usuario', false)
             ->get();
 
         foreach ($tickets as $ticket) {
@@ -27,10 +27,11 @@ class CerrarTicketsVencidos extends Command
             ]);
 
             TicketNota::create([
-                'ticket_id' => $ticket->id,
-                'user_id'   => null,   // sistema
-                'nota'      => 'Ticket cerrado automáticamente por el sistema tras 72 horas sin respuesta del usuario.',
-                'tipo'      => 'publica',
+                'ticket_id'     => $ticket->id,
+                'user_id'       => null,   // sistema: no hay usuario humano detrás de esta nota
+                'nota'          => 'Ticket cerrado automáticamente por el sistema tras 72 horas sin respuesta del usuario.',
+                'tipo'          => 'publica',
+                'es_automatica' => true,
             ]);
         }
 

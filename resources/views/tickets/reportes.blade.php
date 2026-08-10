@@ -147,6 +147,40 @@
         </div>
     </div>
 
+    {{-- Mi desempeño (solo técnico): su propio desglose dentro de su
+         departamento, pensado para que arme su reporte del periodo sin
+         necesitar el ranking completo (que es exclusivo de admin/gerente). --}}
+    @if($metricas['miDesempeno'])
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">
+            <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
+                <h3 class="text-xs font-bold text-gray-500 uppercase">Mi Desempeño</h3>
+                <p class="text-[11px] text-gray-400 normal-case mt-0.5">Tickets de tu departamento que tú marcaste como resueltos en el rango.</p>
+            </div>
+            @if($metricas['miDesempeno']['total'] === 0)
+                <div class="p-6 text-center text-sm text-gray-400">No resolviste tickets en el rango seleccionado.</div>
+            @else
+                <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-50">
+                    <div class="p-4 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Resueltos por mí</p>
+                        <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $metricas['miDesempeno']['total'] }}</p>
+                    </div>
+                    <div class="p-4 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Horas prom.</p>
+                        <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $metricas['miDesempeno']['horas_promedio'] }}</p>
+                    </div>
+                    <div class="p-4 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase">% Dentro de SLA</p>
+                        <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $metricas['miDesempeno']['slaPorcentaje'] }}%</p>
+                    </div>
+                    <div class="p-4 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase">A tiempo</p>
+                        <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $metricas['miDesempeno']['slaCumplidos'] }} / {{ $metricas['miDesempeno']['total'] }}</p>
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- Ranking de técnicos (solo admin/gerente) --}}
     @if(count($metricas['rankingTecnicos']) > 0)
         <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mb-6">

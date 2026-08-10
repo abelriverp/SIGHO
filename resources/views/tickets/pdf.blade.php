@@ -150,7 +150,7 @@
         @foreach($notasPDF as $nota)
         <div class="nota-item {{ $nota->tipo === 'publica' ? 'nota-publica' : 'nota-interna' }}">
             <div class="nota-meta">
-                {{ $nota->user->name ?? '—' }} &nbsp;·&nbsp;
+                {{ $nota->user->name ?? 'Sistema' }} &nbsp;·&nbsp;
                 {{ $nota->tipo === 'publica' ? '🌐 Pública' : '🔒 Interna' }} &nbsp;·&nbsp;
                 {{ $nota->created_at->format('d/m/Y H:i') }}
             </div>

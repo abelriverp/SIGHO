@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Ticket;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 /**
  * Centraliza "quién puede ver qué ticket" y "quién puede pedir el corte
@@ -14,13 +15,18 @@ use App\Models\User;
  * Con el tiempo se van a agregar más módulos; que la regla viva en un solo
  * lugar evita que un módulo nuevo copie una versión desactualizada.
  *
- * Se deja fuera de esta Policy, a propósito, la lógica de resolve/reasignar/
- * confirmar/reabrir/deshacerResolucion/agregarNota: esas mezclan el permiso
- * con la máquina de estados del ticket (status actual, ventanas de tiempo,
- * límite de reasignaciones) y cada una tiene un mensaje de error propio
- * pensado para ese caso puntual. Moverlas sin poder correr los tests en
- * este entorno es un riesgo que no vale la pena tomar en este pase; puede
- * hacerse en un siguiente paso, una por una, con su propia verificación.
+ * resolve/reasignar/confirmar/reabrir/deshacerResolucion/agregarNota ya se
+ * migraron aquí (2026-07-30), pero SOLO la parte de "quién tiene permiso
+ * sobre este ticket" (identidad/rol/departamento). La máquina de estados
+ * (status actual del ticket, ventana de 30 min para deshacer, límite de
+ * reasignaciones) sigue viviendo en TicketController a propósito: esas no
+ * son preguntas de "¿tienes permiso?" sino de "¿se puede hacer esto ahora
+ * mismo?", y ya usan su propio flujo de vuelta con mensaje (back()->with
+ * ('error', ...)) en vez de un 403 — mezclarlas aquí cambiaría ese
+ * comportamiento. Cada método regresa un Response (allow/deny con mensaje)
+ * en vez de bool para poder seguir mostrando el mensaje específico de cada
+ * motivo de rechazo, tal como existía antes de la migración; el controller
+ * lo lee vía Gate::inspect().
  */
 class TicketPolicy
 {
@@ -64,5 +70,102 @@ class TicketPolicy
     public function delete(User $user): bool
     {
         return $user->isAdmin();
+    }
+
+    /**
+     * Puede marcar ESTE ticket como resuelto. El chequeo de rol general
+     * (puedeResponderTickets) se queda inline en el controller, ANTES de
+     * cargar el ticket, para no cambiar el orden actual (403 antes que
+     * 404 cuando el usuario no tiene el rol correcto). Aquí solo viven las
+     * reglas que sí dependen del ticket puntual.
+     */
+    public function resolve(User $user, Ticket $ticket): Response
+    {
+        if ($ticket->user_id === $user->id) {
+            return Response::deny('No puedes resolver un ticket que tú mismo creaste.');
+        }
+
+        if ($user->isTecnico() && $ticket->departamento_destino !== $user->departamento) {
+            return Response::deny('Este ticket no pertenece a tu departamento.');
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Puede reasignar ESTE ticket a otro departamento. Igual que resolve():
+     * el chequeo de rol general se queda inline en el controller antes de
+     * cargar el ticket; el límite de reasignaciones y el status válido
+     * ('Abierto'/'Reabierto') son reglas de estado, no de permiso, y se
+     * quedan en el controller con su propio back()->with('error', ...).
+     */
+    public function reasignar(User $user, Ticket $ticket): Response
+    {
+        if ($ticket->user_id === $user->id) {
+            return Response::deny('No puedes reasignar un ticket que tú mismo reportaste.');
+        }
+
+        if ($user->isTecnico() && $ticket->departamento_destino !== $user->departamento) {
+            return Response::deny('Este ticket no pertenece a tu departamento.');
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Puede confirmar la resolución de ESTE ticket: solo quien lo reportó.
+     */
+    public function confirmar(User $user, Ticket $ticket): Response
+    {
+        if ($ticket->user_id !== $user->id) {
+            return Response::deny('Solo el usuario que reportó puede confirmar este ticket.');
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Puede reabrir ESTE ticket: solo quien lo reportó.
+     */
+    public function reabrir(User $user, Ticket $ticket): Response
+    {
+        if ($ticket->user_id !== $user->id) {
+            return Response::deny('Solo el usuario que reportó puede reabrir este ticket.');
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Puede deshacer la resolución de ESTE ticket: quien lo resolvió, o un
+     * Administrador. El chequeo de rol general (puedeResponderTickets) se
+     * queda inline en el controller antes de cargar el ticket; la ventana
+     * de 30 minutos es una regla de tiempo, no de permiso, y se queda en
+     * el controller.
+     */
+    public function deshacerResolucion(User $user, Ticket $ticket): Response
+    {
+        $esQuienResolvio = $ticket->resolved_by === $user->id;
+
+        if (!$esQuienResolvio && !$user->isAdmin()) {
+            return Response::deny('Solo quien resolvió este ticket o un Administrador puede deshacer la resolución.');
+        }
+
+        return Response::allow();
+    }
+
+    /**
+     * Puede agregar una nota a la bitácora de un ticket: cualquiera excepto
+     * un usuario regular (que solo reporta tickets, no da seguimiento).
+     * Recibe $ticket únicamente para que Gate::inspect() sepa resolver esta
+     * Policy (no depende de datos del ticket en sí, es un chequeo de rol).
+     */
+    public function agregarNota(User $user, Ticket $ticket): Response
+    {
+        if ($user->isUsuario()) {
+            return Response::deny('No tienes permisos para agregar notas.');
+        }
+
+        return Response::allow();
     }
 }

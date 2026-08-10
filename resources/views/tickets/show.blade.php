@@ -129,46 +129,22 @@
 
                 @if($ticket->campos_extra)
                 <div>
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Detalle de la solicitud a Sistemas</h4>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Detalle de la solicitud</h4>
                     <div class="bg-slate-50 border border-slate-100 rounded p-3 space-y-1 text-sm text-slate-700">
                         @php
+                            // campos_extra ya guarda un snapshot legible (etiquetas, no
+                            // IDs) tomado en el momento en que se creó el ticket — ver
+                            // TicketController::store(). Así el detalle sigue siendo
+                            // legible aunque el catálogo (App\Models\TicketCategoria) se
+                            // edite o borre después.
                             $ce = $ticket->campos_extra;
-                            $etiquetas = [
-                                'tipo_solicitud'       => 'Tipo de solicitud',
-                                'otro_detalle'         => 'Detalle',
-                                'aplicativo'           => 'Aplicativo',
-                                'no_colaborador'       => 'No. Colaborador',
-                                'nombre_completo'      => 'Nombre Completo',
-                                'puesto'               => 'Puesto',
-                                'perfil_replicar'      => 'Perfil a replicar',
-                                'correo_institucional' => 'Correo institucional',
-                                'jefe_directo'         => 'Jefe Directo',
-                                'detalle_modificacion' => 'Detalle de la modificación',
-                            ];
-                            $tiposSolicitud = [
-                                'alta_colaborador'     => 'Dar alta de colaborador',
-                                'modificacion_sistema' => 'Modificaciones de sistema',
-                                'otro'                 => 'Otro',
-                            ];
-                            $aplicativos = [
-                                'symphony'   => 'Symphony',
-                                'opera'      => 'Opera',
-                                'mail'       => 'Mail',
-                                'sap'        => 'SAP',
-                                'wintb'      => 'WinTB',
-                                'guesthotel' => 'GuestHotel',
-                            ];
                         @endphp
-                        @foreach($ce as $campo => $valor)
-                            @continue(is_null($valor) || $valor === '')
-                            @php
-                                $valorMostrado = match($campo) {
-                                    'tipo_solicitud' => $tiposSolicitud[$valor] ?? $valor,
-                                    'aplicativo'     => $aplicativos[$valor] ?? $valor,
-                                    default          => $valor,
-                                };
-                            @endphp
-                            <p><span class="font-bold">{{ $etiquetas[$campo] ?? $campo }}:</span> {{ $valorMostrado }}</p>
+                        <p><span class="font-bold">Tipo de solicitud:</span> {{ $ce['categoria_label'] ?? '—' }}</p>
+                        @if(!empty($ce['subcategoria_label']))
+                            <p><span class="font-bold">Sistema:</span> {{ $ce['subcategoria_label'] }}</p>
+                        @endif
+                        @foreach(($ce['campos'] ?? []) as $campo)
+                            <p><span class="font-bold">{{ $campo['label'] ?? '?' }}:</span> {{ $campo['valor'] ?? '' }}</p>
                         @endforeach
                     </div>
                 </div>
@@ -513,7 +489,7 @@
                             <div class="flex-1 {{ $nota->esInterna() ? 'bg-slate-50 border border-slate-200' : 'bg-green-50 border border-green-100' }} rounded-lg p-3">
                                 <div class="flex justify-between items-start mb-1">
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-xs font-bold text-slate-700">{{ $nota->user->name }}</span>
+                                        <span class="text-xs font-bold text-slate-700">{{ $nota->user->name ?? 'Sistema' }}</span>
                                         @if($nota->esInterna())
                                             <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold">🔒 Interna</span>
                                         @else

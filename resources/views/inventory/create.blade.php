@@ -81,6 +81,16 @@
                     placeholder="Notas adicionales, marca, especificaciones...">{{ old('descripcion') }}</textarea>
             </div>
 
+            {{-- Portal de huésped (QR) --}}
+            <div class="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                <input type="checkbox" id="disponible_huesped" name="disponible_huesped" value="1"
+                    {{ old('disponible_huesped') ? 'checked' : '' }} class="mt-1 w-4 h-4">
+                <label for="disponible_huesped" class="text-sm text-slate-700">
+                    <span class="font-bold">Disponible para pedir desde el QR de habitación</span>
+                    <p class="text-xs text-slate-500">El huésped podrá solicitarlo directo desde el portal (ver "Portal de huésped (QR)" en el menú de Tickets). Déjalo sin marcar para artículos de uso interno.</p>
+                </label>
+            </div>
+
             {{-- Archivos --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
                 <div>

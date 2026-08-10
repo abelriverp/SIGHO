@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use App\Models\Modulo;
 
 class User extends Authenticatable
@@ -17,6 +18,7 @@ class User extends Authenticatable
         'password',
         'role',
         'departamento',
+        'area',
         'must_change_password',
         'hotel_code',
     ];
@@ -92,7 +94,9 @@ class User extends Authenticatable
         $this->load('modulos');
     }
 
-    return $this->modulos->contains('clave', $clave);
+    // Un módulo desactivado (obsoleto/renombrado) ya no otorga acceso,
+    // aunque el usuario conserve la asignación histórica en la pivote.
+    return $this->modulos->contains(fn($modulo) => $modulo->clave === $clave && $modulo->activo);
 }
 
 
@@ -106,5 +110,42 @@ class User extends Authenticatable
     public function puedeVerTodos(): bool
     {
         return in_array($this->role, ['admin', 'gerente']);
+    }
+
+    // ==========================================
+    // PORTAL DE HUÉSPED (QR)
+    // ==========================================
+
+    /**
+     * Cuenta de sistema que "reporta" los tickets creados desde el portal
+     * público de huésped (ver GuestPortalController): Ticket.user_id es
+     * obligatorio y no existe un huésped autenticado, así que cada
+     * propiedad tiene una única cuenta ficticia dueña de esas solicitudes.
+     *
+     * A propósito usa el rol 'usuario' que YA existe (no uno nuevo tipo
+     * 'huesped'): agregar un rol nuevo obligaría a revisar cada
+     * isAdmin/isTecnico/isGerente/isUsuario/puedeVerTodos/tieneModulo del
+     * proyecto para asegurar que lo tratan igual que un usuario regular, y
+     * no hay forma de verificar eso sin correr la suite completa en un
+     * entorno con PHP. Esta cuenta nunca inicia sesión (contraseña
+     * aleatoria, must_change_password en false porque jamás llega a esa
+     * pantalla), así que comportarse como un 'usuario' normal es
+     * exactamente lo que se necesita.
+     */
+    public static function cuentaHuespedParaPropiedad(string $hotelCode): self
+    {
+        $hotelCode = strtoupper($hotelCode);
+        $email     = 'huesped-qr+' . strtolower($hotelCode) . '@sistema.local';
+
+        return static::firstOrCreate(
+            ['email' => $email],
+            [
+                'name'                 => 'Huésped (QR) — ' . $hotelCode,
+                'password'             => bcrypt(Str::random(40)),
+                'role'                 => 'usuario',
+                'hotel_code'           => $hotelCode,
+                'must_change_password' => false,
+            ]
+        );
     }
 }

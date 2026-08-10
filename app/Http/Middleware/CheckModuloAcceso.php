@@ -35,7 +35,9 @@ class CheckModuloAcceso
             $user->load('modulos');
         }
 
-        if (!$user->modulos->contains('clave', $clave)) {
+        // Un módulo desactivado (obsoleto/renombrado) ya no otorga acceso,
+        // aunque el usuario conserve la asignación histórica en la pivote.
+        if (!$user->modulos->contains(fn($modulo) => $modulo->clave === $clave && $modulo->activo)) {
             abort(403, 'No tienes acceso a este módulo.');
         }
 

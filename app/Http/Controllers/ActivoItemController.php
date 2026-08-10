@@ -145,6 +145,11 @@ class ActivoItemController extends Controller
     public function destroy($id)
     {
         $item = ActivoItem::where('hotel_code', $this->hotelActivo())->findOrFail($id);
+
+        if (!auth()->user()->can('delete', $item)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar activos.');
+        }
+
         $nombre = $item->nombre_item;
         $item->delete();
 

@@ -64,6 +64,26 @@
 
         {{-- Filtros --}}
         <form method="GET" action="{{ route('tickets.index') }}" class="flex flex-wrap gap-3 items-end">
+            {{-- Usuario que reportó --}}
+            <div class="flex flex-col gap-1 min-w-[160px]">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Usuario</label>
+                <input type="text"
+                       name="usuario"
+                       value="{{ request('usuario', $filtros['usuario'] ?? '') }}"
+                       placeholder="Nombre o correo"
+                       class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#041b32]">
+            </div>
+
+            {{-- Área / ubicación --}}
+            <div class="flex flex-col gap-1 min-w-[160px]">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Área / Ubicación</label>
+                <input type="text"
+                       name="area"
+                       value="{{ request('area', $filtros['area'] ?? '') }}"
+                       placeholder="Ej. Recepción, Piso 3"
+                       class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#041b32]">
+            </div>
+
             {{-- Departamento destino --}}
             <div class="flex flex-col gap-1 min-w-[160px]">
                 <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Departamento</label>
@@ -146,7 +166,7 @@
                         class="bg-slate-700 text-white text-sm font-bold px-5 py-2 rounded-lg hover:opacity-90 transition">
                     Filtrar
                 </button>
-                @if(collect(request()->only(['departamento_destino','status','prioridad','fecha_desde','fecha_hasta']))->filter()->isNotEmpty())
+                @if(collect(request()->only(['departamento_destino','status','prioridad','fecha_desde','fecha_hasta','usuario','area']))->filter()->isNotEmpty())
                     <a href="{{ route('tickets.index') }}"
                        class="text-sm text-slate-500 hover:text-red-500 font-medium px-3 py-2 transition">
                         ✕ Quitar filtros

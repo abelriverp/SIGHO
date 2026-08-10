@@ -105,7 +105,10 @@ class InventoryController extends Controller
             'descripcion'  => 'nullable|string',
             'imagen'       => 'nullable|image|max:5120',
             'pdf_baja'     => 'nullable|mimes:pdf|max:5120',
+            'disponible_huesped' => 'nullable|boolean',
         ]);
+
+        $data['disponible_huesped'] = $request->boolean('disponible_huesped');
 
         $hotelCode     = $this->hotelActivo();
         $data['hotel_code'] = $hotelCode;
@@ -275,7 +278,10 @@ class InventoryController extends Controller
             'descripcion'  => 'nullable|string',
             'imagen'       => 'nullable|image|max:5120',
             'pdf_baja'     => 'nullable|mimes:pdf|max:5120',
+            'disponible_huesped' => 'nullable|boolean',
         ]);
+
+        $data['disponible_huesped'] = $request->boolean('disponible_huesped');
 
         $cantidadAnterior = (float) $item->cantidad;
         $cantidadNueva    = (float) $data['cantidad'];
@@ -325,6 +331,10 @@ class InventoryController extends Controller
     public function destroy($id)
     {
         $item = $this->queryBase()->findOrFail($id);
+
+        if (!auth()->user()->can('delete', $item)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar artículos del inventario.');
+        }
 
         // Snapshot antes de borrar: el registro (y sus movimientos, por cascade)
         // desaparecen de la BD, así que este es el único rastro que queda.

@@ -118,6 +118,10 @@ class AssetController extends Controller
     {
         $asset = Asset::findOrFail($id);
 
+        if (!auth()->user()->can('delete', $asset)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar activos.');
+        }
+
         // Snapshot antes de borrar: una vez eliminado el activo no queda
         // ningún otro registro de que existió ni de quién lo dio de baja.
         $snapshot = $asset->only(['id', 'nomenclatura', 'nombre', 'area', 'division', 'encargado', 'status']);

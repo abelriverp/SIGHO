@@ -54,6 +54,10 @@ class RevisionController extends Controller
 
     public function destroy(Revision $revision)
     {
+        if (!auth()->user()->can('delete', $revision)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar entradas de la bitácora.');
+        }
+
         $assetId = $revision->asset_id;
         $revision->delete();
 

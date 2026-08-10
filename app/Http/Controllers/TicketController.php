@@ -10,11 +10,14 @@ use App\Models\AuditLog;
 use App\Notifications\NuevoTicketNotification;
 use App\Notifications\TicketReasignadoNotification;
 use App\Notifications\TicketResueltoNotification;
+use App\Notifications\NuevoComentarioPublicoNotification;
+use App\Notifications\TicketReabiertoNotification;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Gate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Throwable;
@@ -221,7 +224,7 @@ class TicketController extends Controller
         }
 
         // ── Filtros ────────────────────────────────────────────────
-        $filtros = $request->only(['departamento_destino', 'status', 'fecha_desde', 'fecha_hasta', 'prioridad']);
+        $filtros = $request->only(['departamento_destino', 'status', 'fecha_desde', 'fecha_hasta', 'prioridad', 'usuario', 'area']);
 
         // Orden por fecha de creación: 'antiguos' invierte el orden por defecto (recientes primero).
         $filtros['orden'] = $request->input('orden') === 'antiguos' ? 'antiguos' : 'recientes';
@@ -241,6 +244,25 @@ class TicketController extends Controller
             }
             if (!empty($filtros['prioridad'])) {
                 $query->where('prioridad', $filtros['prioridad']);
+            }
+            // Usuario que reportó el ticket: búsqueda parcial por nombre o
+            // correo, para cuando solo se recuerda parte del nombre.
+            if (!empty($filtros['usuario'])) {
+                $busqueda = $filtros['usuario'];
+                $query->whereHas('user', function ($q) use ($busqueda) {
+                    $q->where('name', 'like', "%{$busqueda}%")
+                      ->orWhere('email', 'like', "%{$busqueda}%");
+                });
+            }
+            // Área / ubicación del ticket: búsqueda parcial en ambos campos
+            // libres (area y descripcion_ubicacion) porque el usuario no
+            // siempre recuerda en cuál de los dos se capturó el dato.
+            if (!empty($filtros['area'])) {
+                $busqueda = $filtros['area'];
+                $query->where(function ($q) use ($busqueda) {
+                    $q->where('area', 'like', "%{$busqueda}%")
+                      ->orWhere('descripcion_ubicacion', 'like', "%{$busqueda}%");
+                });
             }
         };
 
@@ -304,7 +326,9 @@ class TicketController extends Controller
     // ==========================================
     public function create()
     {
-        return view('tickets.create');
+        $catalogoPorDepartamento = \App\Models\TicketCategoria::catalogoAgrupadoPorDepartamento($this->hotelActivo());
+
+        return view('tickets.create', compact('catalogoPorDepartamento'));
     }
 
     // ==========================================
@@ -333,68 +357,103 @@ class TicketController extends Controller
             }
         }
 
-        $data = $request->validate([
-            'area'                  => 'required|string|max:255',
+        // Catálogo dinámico de tipo de solicitud/sistema (App\Models\
+        // TicketCategoria), administrable por admin/gerente desde
+        // /tickets/categorias. Ya no vive en config/tickets_sistemas.php ni
+        // es exclusivo de "Sistemas": aplica a cualquier departamento que
+        // tenga categorías activas para la propiedad actual; si no tiene
+        // ninguna (ej. Mantenimiento sin catálogo propio), el ticket se
+        // levanta solo con la descripción general, como cualquier otro.
+        $departamentoDestino = $request->input('departamento_destino');
+        $categorias = $departamentoDestino
+            ? \App\Models\TicketCategoria::catalogoParaDepartamento($departamentoDestino, $this->hotelActivo())
+            : collect();
+        $tieneCategorias = $categorias->isNotEmpty();
+
+        // El área normalmente ya viene fija en la cuenta del usuario (la
+        // asigna un administrador en Usuarios) y el formulario la manda de
+        // solo lectura. Solo se exige en el request como respaldo para
+        // cuentas viejas que todavía no tienen área asignada (ver fallback
+        // en tickets/create.blade.php).
+        $areaCuenta = $request->user()->area;
+
+        $rules = [
+            'area'                  => $areaCuenta ? 'nullable|string|max:255' : 'required|string|max:255',
             'departamento_destino'  => ['required', 'string', Rule::in($this->departamentosValidos())],
             'descripcion_ubicacion' => 'nullable|string|max:255',
             'descripcion'           => 'required|string',
             'prioridad'             => 'required|string|in:Baja,Media,Alta',
-            'archivos'              => 'nullable|array|max:5',
+            'archivos'              => 'nullable|array|max:6',
             'archivos.*'            => 'file|mimes:jpeg,png,jpg,mp4,mov|max:6144',
+        ];
 
-            // Sección dinámica exclusiva de "Sistemas"
-            'tipo_solicitud_sistemas' => 'nullable|required_if:departamento_destino,Sistemas|in:alta_colaborador,modificacion_sistema,otro',
-            'otro_detalle'            => 'nullable|required_if:tipo_solicitud_sistemas,otro|string|max:1000',
+        $categoriaSel    = $tieneCategorias ? $categorias->firstWhere('id', (int) $request->input('tipo_solicitud')) : null;
+        $requiereSistema = $categoriaSel && $categoriaSel->requiere_subcategoria;
+        $subSel          = null;
+        $camposDef       = collect();
 
-            'aplicativo'            => 'nullable|required_if:tipo_solicitud_sistemas,alta_colaborador|in:symphony,opera,mail,sap,wintb,guesthotel',
-            'no_colaborador'        => 'nullable|required_if:tipo_solicitud_sistemas,alta_colaborador|string|max:50',
-            'nombre_completo'       => 'nullable|required_if:tipo_solicitud_sistemas,alta_colaborador|string|max:255',
-            'puesto'                => 'nullable|required_if:tipo_solicitud_sistemas,alta_colaborador|string|max:255',
-            'perfil_replicar'       => 'nullable|string|max:255',
-            'correo_institucional'  => ['nullable', 'required_if:aplicativo,sap', 'email', 'regex:/@hotelesemporio\.com$/i'],
-            'jefe_directo'          => 'nullable|required_if:aplicativo,mail|string|max:255',
+        if ($tieneCategorias) {
+            $rules['tipo_solicitud'] = ['required', Rule::in($categorias->pluck('id')->map(fn ($id) => (string) $id)->all())];
 
-            'aplicativo_mod'        => 'nullable|required_if:tipo_solicitud_sistemas,modificacion_sistema|in:symphony,opera,mail,sap,wintb,guesthotel',
-            'detalle_modificacion'  => 'nullable|required_if:tipo_solicitud_sistemas,modificacion_sistema|string|max:1000',
-        ], [
-            'correo_institucional.regex' => 'El correo debe ser institucional (@hotelesemporio.com).',
-            'archivos.max' => 'Puedes adjuntar máximo 5 archivos.',
+            if ($requiereSistema) {
+                $subOpciones = $categoriaSel->subcategorias;
+                $rules['sistema'] = ['required', Rule::in($subOpciones->pluck('id')->map(fn ($id) => (string) $id)->all())];
+                $subSel    = $subOpciones->firstWhere('id', (int) $request->input('sistema'));
+                $camposDef = $subSel ? $subSel->campos : collect();
+            } else {
+                $rules['sistema'] = 'nullable';
+                $camposDef        = $categoriaSel ? $categoriaSel->campos : collect();
+            }
+
+            foreach ($camposDef as $campo) {
+                $reglasCampo = $campo->requerido ? 'required' : 'nullable';
+                $reglasCampo .= '|string|max:1000';
+                $rules['campos.' . $campo->name] = $reglasCampo;
+            }
+        } else {
+            $rules['sistema']        = 'nullable';
+            $rules['tipo_solicitud'] = 'nullable';
+            $rules['campos']         = 'nullable|array';
+        }
+
+        $data = $request->validate($rules, [
+            'sistema.required'        => 'Selecciona a qué sistema aplica la solicitud.',
+            'tipo_solicitud.required' => 'Selecciona el tipo de solicitud.',
+            'archivos.max' => 'Puedes adjuntar máximo 6 archivos.',
             'archivos.*.uploaded' => 'Uno de los archivos no se pudo subir porque es demasiado grande para la configuración actual del servidor. Intenta con un archivo más pequeño o contacta a sistemas.',
             'archivos.*.max' => 'Cada archivo no puede pesar más de 6 MB.',
             'archivos.*.mimes' => 'Cada archivo debe ser una imagen (jpg, png) o un video (mp4, mov).',
         ]);
 
-        // Construir campos_extra según lo que se seleccionó (solo aplica a Sistemas)
+        // campos_extra guarda un snapshot legible (etiquetas de categoría,
+        // sistema y cada campo, no solo sus IDs) para que el detalle del
+        // ticket siga siendo legible aunque el catálogo se edite o borre
+        // después — un ticket ya creado no depende de que esas filas sigan existiendo.
         $camposExtra = null;
-        if ($data['departamento_destino'] === 'Sistemas' && !empty($data['tipo_solicitud_sistemas'])) {
-            $tipo = $data['tipo_solicitud_sistemas'];
-            $camposExtra = ['tipo_solicitud' => $tipo];
-
-            if ($tipo === 'otro') {
-                $camposExtra['otro_detalle'] = $data['otro_detalle'] ?? null;
-            } elseif ($tipo === 'alta_colaborador') {
-                $camposExtra['aplicativo']      = $data['aplicativo'] ?? null;
-                $camposExtra['no_colaborador']  = $data['no_colaborador'] ?? null;
-                $camposExtra['nombre_completo'] = $data['nombre_completo'] ?? null;
-                $camposExtra['puesto']          = $data['puesto'] ?? null;
-
-                if (($data['aplicativo'] ?? null) === 'opera') {
-                    $camposExtra['perfil_replicar'] = $data['perfil_replicar'] ?? null;
-                } elseif (($data['aplicativo'] ?? null) === 'sap') {
-                    $camposExtra['correo_institucional'] = $data['correo_institucional'] ?? null;
-                } elseif (($data['aplicativo'] ?? null) === 'mail') {
-                    $camposExtra['jefe_directo'] = $data['jefe_directo'] ?? null;
-                }
-            } elseif ($tipo === 'modificacion_sistema') {
-                $camposExtra['aplicativo']           = $data['aplicativo_mod'] ?? null;
-                $camposExtra['detalle_modificacion'] = $data['detalle_modificacion'] ?? null;
-            }
+        if ($tieneCategorias && $categoriaSel) {
+            $camposExtra = [
+                'categoria_label'    => $categoriaSel->label,
+                'subcategoria_label' => ($requiereSistema && $subSel) ? $subSel->label : null,
+                'campos'             => $camposDef->map(function ($campo) use ($data) {
+                    return [
+                        'label' => $campo->label,
+                        'valor' => $data['campos'][$campo->name] ?? null,
+                    ];
+                })->filter(fn ($c) => !is_null($c['valor']) && $c['valor'] !== '')->values()->all(),
+            ];
         }
 
         // Solo conservar las columnas reales de la tabla + campos_extra
         $data = collect($data)->only([
             'area', 'departamento_destino', 'descripcion_ubicacion', 'descripcion', 'prioridad',
         ])->toArray();
+
+        // La cuenta manda sobre lo que haya llegado del formulario: así el
+        // valor guardado en el ticket siempre coincide con el área real del
+        // usuario, aunque el campo del formulario esté deshabilitado (o
+        // alguien intente forzar otro valor por request manual).
+        $data['area'] = $areaCuenta ?: ($data['area'] ?? null);
+
         $data['campos_extra'] = $camposExtra;
 
         if ($request->hasFile('archivos')) {
@@ -452,12 +511,9 @@ class TicketController extends Controller
 
         $ticket = Ticket::findOrFail($id);
 
-        if ($ticket->user_id === $user->id) {
-            abort(403, 'No puedes resolver un ticket que tú mismo creaste.');
-        }
-
-        if ($user->isTecnico() && $ticket->departamento_destino !== $user->departamento) {
-            abort(403, 'Este ticket no pertenece a tu departamento.');
+        $autorizacion = Gate::inspect('resolve', $ticket);
+        if ($autorizacion->denied()) {
+            abort(403, $autorizacion->message());
         }
 
         $request->validate([
@@ -536,15 +592,12 @@ class TicketController extends Controller
             return back()->with('error', 'Solo se pueden reasignar tickets que están "Abierto" o "Reabierto".');
         }
 
-        if ($ticket->user_id === $user->id) {
-            abort(403, 'No puedes reasignar un ticket que tú mismo reportaste.');
-        }
-
         // Un técnico solo puede reasignar tickets que le llegaron a él
         // (es decir, que el ticket está actualmente en su departamento).
         // Un Administrador puede reasignar cualquier ticket.
-        if ($user->isTecnico() && $ticket->departamento_destino !== $user->departamento) {
-            abort(403, 'Este ticket no pertenece a tu departamento.');
+        $autorizacion = Gate::inspect('reasignar', $ticket);
+        if ($autorizacion->denied()) {
+            abort(403, $autorizacion->message());
         }
 
         // Límite de reasignaciones: si ya se alcanzó, solo un Administrador
@@ -617,8 +670,9 @@ class TicketController extends Controller
         $ticket = Ticket::findOrFail($id);
         $user   = auth()->user();
 
-        if ($ticket->user_id !== $user->id) {
-            abort(403, 'Solo el usuario que reportó puede confirmar este ticket.');
+        $autorizacion = Gate::inspect('confirmar', $ticket);
+        if ($autorizacion->denied()) {
+            abort(403, $autorizacion->message());
         }
 
         if ($ticket->status !== 'Resuelto') {
@@ -669,8 +723,9 @@ class TicketController extends Controller
         $ticket = Ticket::findOrFail($id);
         $user   = auth()->user();
 
-        if ($ticket->user_id !== $user->id) {
-            abort(403, 'Solo el usuario que reportó puede reabrir este ticket.');
+        $autorizacion = Gate::inspect('reabrir', $ticket);
+        if ($autorizacion->denied()) {
+            abort(403, $autorizacion->message());
         }
 
         if ($ticket->status !== 'Resuelto') {
@@ -682,6 +737,10 @@ class TicketController extends Controller
         $ticket->update([
             'status'            => 'Reabierto',
             'motivo_reapertura' => $request->motivo_reapertura,
+            // Si ya se había escalado por SLA en un ciclo anterior, se
+            // limpia para que el motor de SLA (tickets:escalar-sla) pueda
+            // volver a escalarlo si también incumple esta vez.
+            'sla_escalado_at'   => null,
         ]);
 
         TicketNota::create([
@@ -699,6 +758,17 @@ class TicketController extends Controller
             $antes,
             $ticket->fresh()->only(['status', 'motivo_reapertura'])
         );
+
+        // Notificar al equipo técnico del departamento actual (+ admins)
+        $destinatarios = User::where(function ($q) use ($ticket) {
+            $q->where('role', 'admin')
+              ->orWhere(function ($q2) use ($ticket) {
+                  $q2->where('role', 'tecnico')
+                     ->where('departamento', $ticket->departamento_destino);
+              });
+        })->get();
+
+        Notification::send($destinatarios, new TicketReabiertoNotification($ticket->fresh(), $request->motivo_reapertura));
 
         return redirect()->route('tickets.show', $ticket->id)
             ->with('warning', 'Ticket reabierto. El equipo técnico ha sido notificado.');
@@ -726,10 +796,9 @@ class TicketController extends Controller
             return back()->with('error', 'Este ticket ya no está en estado "Resuelto" (el usuario ya confirmó o reabrió el ticket), así que no se puede deshacer desde aquí.');
         }
 
-        $esQuienResolvio = $ticket->resolved_by === $user->id;
-
-        if (!$esQuienResolvio && !$user->isAdmin()) {
-            abort(403, 'Solo quien resolvió este ticket o un Administrador puede deshacer la resolución.');
+        $autorizacion = Gate::inspect('deshacerResolucion', $ticket);
+        if ($autorizacion->denied()) {
+            abort(403, $autorizacion->message());
         }
 
         // Ventana de 30 minutos para autocorrección; los administradores
@@ -790,16 +859,24 @@ class TicketController extends Controller
         $user   = auth()->user();
         $ticket = Ticket::findOrFail($id);
 
-        if ($user->isUsuario()) {
-            abort(403, 'No tienes permisos para agregar notas.');
+        $autorizacion = Gate::inspect('agregarNota', $ticket);
+        if ($autorizacion->denied()) {
+            abort(403, $autorizacion->message());
         }
 
-        TicketNota::create([
+        $nota = TicketNota::create([
             'ticket_id' => $ticket->id,
             'user_id'   => $user->id,
             'nota'      => $request->nota,
             'tipo'      => $request->tipo,
         ]);
+
+        // Si es un comentario público y quien lo escribió no es el propio
+        // dueño del ticket, se notifica al usuario que reportó el problema.
+        if ($nota->esPublica() && $ticket->user_id !== $user->id) {
+            $nota->setRelation('user', $user);
+            Notification::send($ticket->user, new NuevoComentarioPublicoNotification($ticket, $nota));
+        }
 
         return back()->with('success', 'Nota agregada correctamente.');
     }

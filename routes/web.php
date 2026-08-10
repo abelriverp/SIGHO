@@ -7,7 +7,9 @@ use App\Http\Controllers\{
     TicketController, AdminSettingsController, HabitacionActivoController,
     ActivoPlantillaController, ActivoItemController,
     ProfileController, DashboardController,
-    UnidadController, CondominoController, EstanciaController
+    UnidadController, CondominoController, EstanciaController,
+    TicketCategoriaController, SlaPoliticaController,
+    GuestPortalController, PuntoQrController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -17,6 +19,13 @@ use App\Http\Middleware\CheckAdmin;
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Portal de huésped por QR: sin login, cada habitación/unidad tiene su
+// propio enlace impredecible (ver App\Models\PuntoQr). Termina creando un
+// Ticket normal — ver GuestPortalController.
+Route::get('/qr/{token}', [GuestPortalController::class, 'show'])->name('guest.show');
+Route::post('/qr/{token}', [GuestPortalController::class, 'store'])->middleware('throttle:guest-request')->name('guest.store');
+Route::get('/qr/{token}/gracias', [GuestPortalController::class, 'gracias'])->name('guest.gracias');
 
 // ==========================================
 // 🔒 RUTAS SISTEMA PROTEGIDAS (REQUIEREN LOGIN)
@@ -97,6 +106,57 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['modulo:red_infraestructura'])->group(function () {
         Route::resource('network', NetworkController::class);
         Route::post('/network/port/{id}', [NetworkController::class, 'updatePort'])->name('network.port.update');
+    });
+
+    // Catálogo de categorías de tickets (Tipo de solicitud -> Sistema ->
+    // Campos), administrable por Admin y Gerente — por eso vive fuera del
+    // prefijo /admin (que es solo Admin) y usa el middleware 'supervisor'.
+    // IMPORTANTE: este grupo debe registrarse ANTES del grupo `tickets.` de
+    // abajo, porque comparte el prefijo /tickets/... y ese otro grupo tiene
+    // una ruta comodín GET /tickets/{id} que, si se registrara primero,
+    // interceptaría /tickets/categorias tratando "categorias" como {id}.
+    Route::middleware(['modulo:gestion_tickets', 'supervisor'])->prefix('tickets/categorias')->name('tickets.categorias.')->group(function () {
+        Route::get('/', [TicketCategoriaController::class, 'index'])->name('index');
+        Route::get('/crear', [TicketCategoriaController::class, 'create'])->name('create');
+        Route::post('/', [TicketCategoriaController::class, 'store'])->name('store');
+
+        Route::get('/subcategorias/crear', [TicketCategoriaController::class, 'subcategoriasCreate'])->name('subcategorias.create');
+        Route::post('/subcategorias', [TicketCategoriaController::class, 'subcategoriasStore'])->name('subcategorias.store');
+        Route::get('/subcategorias/{subcategoria}/editar', [TicketCategoriaController::class, 'subcategoriasEdit'])->name('subcategorias.edit');
+        Route::put('/subcategorias/{subcategoria}', [TicketCategoriaController::class, 'subcategoriasUpdate'])->name('subcategorias.update');
+        Route::delete('/subcategorias/{subcategoria}', [TicketCategoriaController::class, 'subcategoriasDestroy'])->name('subcategorias.destroy');
+        Route::post('/subcategorias/{subcategoria}/duplicar', [TicketCategoriaController::class, 'subcategoriasDuplicar'])->name('subcategorias.duplicar');
+
+        Route::get('/{categoria}/editar', [TicketCategoriaController::class, 'edit'])->name('edit');
+        Route::put('/{categoria}', [TicketCategoriaController::class, 'update'])->name('update');
+        Route::delete('/{categoria}', [TicketCategoriaController::class, 'destroy'])->name('destroy');
+        Route::get('/{categoria}', [TicketCategoriaController::class, 'show'])->name('show');
+    });
+
+    // Política de SLA (horas de resolución/alerta por departamento y
+    // prioridad), administrable por Admin y Gerente — igual que categorías
+    // de tickets, y por la misma razón debe registrarse ANTES del grupo
+    // `tickets.` de abajo (comparte el prefijo /tickets/... y ese grupo
+    // tiene una ruta comodín GET /tickets/{id}).
+    Route::middleware(['modulo:gestion_tickets', 'supervisor'])->prefix('tickets/sla')->name('tickets.sla.')->group(function () {
+        Route::get('/', [SlaPoliticaController::class, 'index'])->name('index');
+        Route::get('/crear', [SlaPoliticaController::class, 'create'])->name('create');
+        Route::post('/', [SlaPoliticaController::class, 'store'])->name('store');
+        Route::get('/{politica}/editar', [SlaPoliticaController::class, 'edit'])->name('edit');
+        Route::put('/{politica}', [SlaPoliticaController::class, 'update'])->name('update');
+        Route::delete('/{politica}', [SlaPoliticaController::class, 'destroy'])->name('destroy');
+    });
+
+    // Administración de puntos QR (habitaciones/unidades) para el portal
+    // de huésped. Admin y Gerente, igual que categorías de tickets y SLA.
+    Route::middleware(['supervisor'])->prefix('puntos-qr')->name('puntos-qr.')->group(function () {
+        Route::get('/', [PuntoQrController::class, 'index'])->name('index');
+        Route::get('/crear', [PuntoQrController::class, 'create'])->name('create');
+        Route::post('/', [PuntoQrController::class, 'store'])->name('store');
+        Route::get('/{puntoQr}/imprimir', [PuntoQrController::class, 'imprimir'])->name('imprimir');
+        Route::patch('/{puntoQr}/estado', [PuntoQrController::class, 'toggleActivo'])->name('estado');
+        Route::patch('/{puntoQr}/regenerar-token', [PuntoQrController::class, 'regenerarToken'])->name('regenerar-token');
+        Route::delete('/{puntoQr}', [PuntoQrController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware(['modulo:gestion_tickets'])->prefix('tickets')->name('tickets.')->group(function () {

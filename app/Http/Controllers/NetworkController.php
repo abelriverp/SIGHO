@@ -90,8 +90,13 @@ class NetworkController extends Controller
     public function destroy($id)
     {
         $device = NetworkDevice::findOrFail($id);
+
+        if (!auth()->user()->can('delete', $device)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar dispositivos de red.');
+        }
+
         $nombre = $device->nombre;
-        
+
         $device->delete();
         
         // Los puertos asociados se borran solos por la llave foránea "cascade" configurada en DB.
