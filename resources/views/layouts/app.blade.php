@@ -153,6 +153,7 @@
                                 <a href="{{ route('admin.areas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Catálogo de Áreas</a>
                                 <a href="{{ route('admin.departamentos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Departamentos (Tickets)</a>
                                 <a href="{{ route('admin.activo-plantillas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Áreas de Activos</a>
+                                <a href="{{ route('admin.anuncios.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📢 Anuncios</a>
                                 <a href="{{ route('admin.auditoria.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📋 Bitácora</a>
                             </div>
                         </div>
@@ -211,6 +212,8 @@
                                     </select>
                                 </form>
                             @endif
+
+                            <a href="{{ route('novedades.index') }}" class="text-lg hover:text-blue-300 transition" title="Novedades">🆕</a>
 
                             <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                                 <button @click="open = !open" type="button" class="relative flex items-center text-lg hover:text-blue-300 transition" title="Alertas">

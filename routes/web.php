@@ -9,7 +9,7 @@ use App\Http\Controllers\{
     ProfileController, DashboardController,
     UnidadController, CondominoController, EstanciaController,
     TicketCategoriaController, SlaPoliticaController,
-    GuestPortalController, PuntoQrController
+    GuestPortalController, PuntoQrController, AnuncioController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -43,6 +43,10 @@ Route::middleware('auth')->group(function () {
 
     // 📊 Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // 🆕 Novedades: anuncios de nuevas funciones/cambios, filtrados a los
+    // módulos a los que cada quien tiene acceso (ver AnuncioController).
+    Route::get('/novedades', [AnuncioController::class, 'novedades'])->name('novedades.index');
 
     // Perfil y Seguridad
     Route::get('/cambiar-contrasena', [ProfileController::class, 'showChangePasswordForm'])->name('password.change');
@@ -214,6 +218,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/propiedades/{id}', [AdminSettingsController::class, 'hotelesDestroy'])->name('hoteles.destroy');
 
         Route::get('/bitacora', [AdminSettingsController::class, 'auditoriaIndex'])->name('auditoria.index');
+
+        // 📢 Anuncios de nuevas funciones/cambios (ver AnuncioController).
+        Route::get('/anuncios', [AnuncioController::class, 'index'])->name('anuncios.index');
+        Route::post('/anuncios', [AnuncioController::class, 'store'])->name('anuncios.store');
 
         // Selector de propiedad activa (solo Admin: es el único rol que
         // supervisa más de una propiedad). Ver AdminSettingsController::
