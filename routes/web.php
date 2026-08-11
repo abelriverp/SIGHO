@@ -172,6 +172,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/descargar', [TicketController::class, 'downloadPDF'])->name('download');
         Route::post('/{id}/confirmar', [TicketController::class, 'confirmar'])->name('confirmar');
         Route::post('/{id}/reabrir', [TicketController::class, 'reabrir'])->name('reabrir');
+        Route::post('/{id}/recordatorio', [TicketController::class, 'recordatorio'])->name('recordatorio');
         Route::patch('/{id}/deshacer-resolucion', [TicketController::class, 'deshacerResolucion'])->name('deshacer-resolucion');
         Route::post('/{id}/notas', [TicketController::class, 'agregarNota'])->name('notas.store');
         Route::patch('/{ticket}/notas/{nota}/edit', [TicketController::class, 'editarNota'])->name('notas.edit');

@@ -28,6 +28,7 @@ class Ticket extends Model
         'notas_admin',
         'fecha_resolucion',
         'sla_escalado_at',
+        'ultimo_recordatorio_at',
         'confirmado_usuario',
         'fecha_confirmacion',
         'motivo_reapertura',
@@ -45,6 +46,7 @@ class Ticket extends Model
         'fecha_confirmacion' => 'datetime',
         'fecha_resolucion'   => 'datetime',
         'sla_escalado_at'    => 'datetime',
+        'ultimo_recordatorio_at' => 'datetime',
     ];
 
     // Relación con el usuario que creó el ticket

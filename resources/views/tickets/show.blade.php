@@ -339,6 +339,47 @@
         @endif
 
         {{-- ============================================ --}}
+        {{-- BLOQUE: ENVIAR RECORDATORIO (usuario reportante) --}}
+        {{-- Para cuando el ticket lleva varios días abierto y el   --}}
+        {{-- reportante no ve seguimiento. Distinto de la escalación --}}
+        {{-- automática por SLA: esto lo dispara la persona, avisa   --}}
+        {{-- de nuevo al departamento responsable. Umbral: 2 días    --}}
+        {{-- desde la creación. Cooldown: 24h entre uno y el siguiente. --}}
+        {{-- ============================================ --}}
+        @if(in_array($ticket->status, ['Abierto', 'Reabierto']) && auth()->id() === $ticket->user_id)
+            @php
+                $diasAbierto = $ticket->created_at->diffInDays(now());
+                $cumpleUmbralRecordatorio = $diasAbierto >= 2;
+                $horasDesdeUltimoRecordatorio = $ticket->ultimo_recordatorio_at
+                    ? $ticket->ultimo_recordatorio_at->diffInHours(now())
+                    : null;
+                $enCooldownRecordatorio = $horasDesdeUltimoRecordatorio !== null && $horasDesdeUltimoRecordatorio < 24;
+                $puedeRecordar = $cumpleUmbralRecordatorio && !$enCooldownRecordatorio;
+            @endphp
+            <div class="px-6 py-6 border-t border-slate-200 bg-slate-50 no-print">
+                <h4 class="text-sm font-bold text-slate-700 mb-1">¿No ves seguimiento en tu ticket?</h4>
+                <p class="text-xs text-slate-500 mb-3">
+                    Lleva {{ $diasAbierto }} {{ $diasAbierto == 1 ? 'día' : 'días' }} abierto.
+                    @if($puedeRecordar)
+                        Puedes avisarle de nuevo al departamento responsable.
+                    @elseif($enCooldownRecordatorio)
+                        Ya enviaste un recordatorio; podrás enviar otro en {{ 24 - $horasDesdeUltimoRecordatorio }} horas.
+                    @else
+                        Podrás enviar un recordatorio a partir de los 2 días de abierto.
+                    @endif
+                </p>
+                <form action="{{ route('tickets.recordatorio', $ticket->id) }}" method="POST"
+                      onsubmit="return confirm('¿Enviar un recordatorio al departamento responsable?');">
+                    @csrf
+                    <button type="submit" @disabled(!$puedeRecordar)
+                        class="w-full font-bold py-2 rounded shadow transition {{ $puedeRecordar ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed' }}">
+                        🔔 Enviar recordatorio
+                    </button>
+                </form>
+            </div>
+        @endif
+
+        {{-- ============================================ --}}
         {{-- BLOQUE: REASIGNAR A OTRO DEPARTAMENTO        --}}
         {{-- Para cuando el ticket se enrutó al departamento          --}}
         {{-- equivocado. Un técnico solo puede reasignar tickets de   --}}

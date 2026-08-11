@@ -155,6 +155,22 @@ class TicketPolicy
     }
 
     /**
+     * Puede enviar un recordatorio manual de ESTE ticket: solo quien lo
+     * reportó. El umbral de 2 días desde la creación y el cooldown de 24h
+     * entre recordatorios son reglas de tiempo/estado, no de permiso — se
+     * quedan en el controller con su propio back()->with('error', ...),
+     * igual que el resto de la máquina de estados.
+     */
+    public function recordatorio(User $user, Ticket $ticket): Response
+    {
+        if ($ticket->user_id !== $user->id) {
+            return Response::deny('Solo el usuario que reportó puede enviar un recordatorio de este ticket.');
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Puede agregar una nota a la bitácora de un ticket: cualquiera excepto
      * un usuario regular (que solo reporta tickets, no da seguimiento).
      * Recibe $ticket únicamente para que Gate::inspect() sepa resolver esta

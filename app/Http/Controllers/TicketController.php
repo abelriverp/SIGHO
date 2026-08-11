@@ -12,6 +12,7 @@ use App\Notifications\TicketReasignadoNotification;
 use App\Notifications\TicketResueltoNotification;
 use App\Notifications\NuevoComentarioPublicoNotification;
 use App\Notifications\TicketReabiertoNotification;
+use App\Notifications\TicketRecordatorioNotification;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
@@ -772,6 +773,78 @@ class TicketController extends Controller
 
         return redirect()->route('tickets.show', $ticket->id)
             ->with('warning', 'Ticket reabierto. El equipo técnico ha sido notificado.');
+    }
+
+    // ==========================================
+    // RECORDATORIO (usuario reportante, sin ver seguimiento)
+    // Distinto de la escalación automática por SLA (tickets:escalar-sla,
+    // que avisa a admin/gerente cuando se incumple el tiempo formal): esto
+    // lo dispara el propio reportante cuando ya pasaron varios días y no
+    // ve movimiento en su ticket, y avisa de nuevo al departamento
+    // responsable (mismo destinatario que al crear/reabrir el ticket).
+    // UMBRAL_RECORDATORIO_DIAS/COOLDOWN son reglas de tiempo, no de
+    // permiso — se quedan aquí, igual que el resto de la máquina de
+    // estados, no en TicketPolicy.
+    // ==========================================
+    private const UMBRAL_RECORDATORIO_DIAS = 2;
+    private const COOLDOWN_RECORDATORIO_HORAS = 24;
+
+    public function recordatorio(Request $request, $id)
+    {
+        $ticket = Ticket::findOrFail($id);
+        $user   = auth()->user();
+
+        $autorizacion = Gate::inspect('recordatorio', $ticket);
+        if ($autorizacion->denied()) {
+            abort(403, $autorizacion->message());
+        }
+
+        if (!in_array($ticket->status, ['Abierto', 'Reabierto'])) {
+            return back()->with('error', 'Este ticket no está abierto, no aplica enviar un recordatorio.');
+        }
+
+        $diasAbierto = $ticket->created_at->diffInDays(now());
+
+        if ($diasAbierto < self::UMBRAL_RECORDATORIO_DIAS) {
+            return back()->with('error', 'Este ticket lleva menos de ' . self::UMBRAL_RECORDATORIO_DIAS . ' días abierto; todavía no puedes enviar un recordatorio.');
+        }
+
+        if ($ticket->ultimo_recordatorio_at && $ticket->ultimo_recordatorio_at->diffInHours(now()) < self::COOLDOWN_RECORDATORIO_HORAS) {
+            $horasRestantes = self::COOLDOWN_RECORDATORIO_HORAS - $ticket->ultimo_recordatorio_at->diffInHours(now());
+            return back()->with('error', "Ya enviaste un recordatorio para este ticket. Podrás enviar otro en {$horasRestantes} horas.");
+        }
+
+        $ticket->update(['ultimo_recordatorio_at' => now()]);
+
+        TicketNota::create([
+            'ticket_id'     => $ticket->id,
+            'user_id'       => $user->id,
+            'nota'          => "El usuario envió un recordatorio: el ticket lleva {$diasAbierto} días abierto sin seguimiento visible.",
+            'tipo'          => 'publica',
+            'es_automatica' => true,
+        ]);
+
+        AuditLog::registrar(
+            'ticket.recordatorio',
+            "Envió un recordatorio del ticket #{$ticket->id} (\"{$ticket->area}\"), abierto desde hace {$diasAbierto} días.",
+            $ticket,
+            null,
+            ['ultimo_recordatorio_at' => $ticket->fresh()->ultimo_recordatorio_at->toDateTimeString()]
+        );
+
+        // Mismo destinatario que al crear/reabrir el ticket: admin + los
+        // técnicos del departamento al que está asignado ahora mismo.
+        $destinatarios = User::where(function ($q) use ($ticket) {
+            $q->where('role', 'admin')
+              ->orWhere(function ($q2) use ($ticket) {
+                  $q2->where('role', 'tecnico')
+                     ->where('departamento', $ticket->departamento_destino);
+              });
+        })->get();
+
+        Notification::send($destinatarios, new TicketRecordatorioNotification($ticket->fresh(), $diasAbierto));
+
+        return back()->with('success', 'Recordatorio enviado. El equipo responsable fue notificado de nuevo.');
     }
 
     // ==========================================
