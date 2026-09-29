@@ -9,7 +9,9 @@ use App\Http\Controllers\{
     ProfileController, DashboardController,
     UnidadController, CondominoController, EstanciaController,
     TicketCategoriaController, SlaPoliticaController,
-    GuestPortalController, PuntoQrController, AnuncioController
+    GuestPortalController, PuntoQrController, AnuncioController,
+    OperadorController, RecepcionController, EmailValidacionController,
+    ExtensionDeteccionController, PerfilCorreoValidacionController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -31,7 +33,7 @@ Route::get('/qr/{token}/gracias', [GuestPortalController::class, 'gracias'])->na
 // 🔒 RUTAS SISTEMA PROTEGIDAS (REQUIEREN LOGIN)
 // ==========================================
 Route::middleware('auth')->group(function () {
-    
+
     // 🏠 Pantalla de Inicio
     Route::get('/', function () {
         $user = auth()->user();
@@ -107,6 +109,44 @@ Route::middleware('auth')->group(function () {
         Route::resource('condominos', CondominoController::class);
     });
 
+    // Herramientas de Recepción: validador de correos de huéspedes y
+    // detector de extensiones de estancia, a partir de los PDF de reservas
+    // que exporta el sistema (ver App\Services\Recepcion\*). Port del
+    // programa de escritorio que antes usaba Recepción de forma aislada.
+    Route::middleware(['modulo:herramientas_recepcion'])->prefix('recepcion')->name('recepcion.')->group(function () {
+        Route::get('/', [RecepcionController::class, 'index'])->name('index');
+
+        Route::prefix('emails')->name('email.')->group(function () {
+            Route::get('/', [EmailValidacionController::class, 'index'])->name('index');
+            Route::get('/nuevo', [EmailValidacionController::class, 'create'])->name('create');
+            Route::post('/', [EmailValidacionController::class, 'store'])->name('store');
+            Route::get('/{validacion}', [EmailValidacionController::class, 'show'])->name('show');
+            Route::get('/{validacion}/pdf', [EmailValidacionController::class, 'pdf'])->name('pdf');
+            Route::delete('/{validacion}', [EmailValidacionController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::prefix('extensiones')->name('extensiones.')->group(function () {
+            Route::get('/', [ExtensionDeteccionController::class, 'index'])->name('index');
+            Route::get('/nueva', [ExtensionDeteccionController::class, 'create'])->name('create');
+            Route::post('/', [ExtensionDeteccionController::class, 'store'])->name('store');
+            Route::get('/{deteccion}', [ExtensionDeteccionController::class, 'show'])->name('show');
+            Route::delete('/{deteccion}', [ExtensionDeteccionController::class, 'destroy'])->name('destroy');
+        });
+
+        // Reporte "Profiles with e-mails": valida el correo de cada
+        // reserva (no solo un conjunto de correos únicos, como el grupo
+        // "emails" de arriba) y, cuando el dominio lo permite, intenta
+        // confirmar por SMTP si el buzón exacto existe.
+        Route::prefix('perfiles-correo')->name('perfiles.')->group(function () {
+            Route::get('/', [PerfilCorreoValidacionController::class, 'index'])->name('index');
+            Route::get('/nuevo', [PerfilCorreoValidacionController::class, 'create'])->name('create');
+            Route::post('/', [PerfilCorreoValidacionController::class, 'store'])->name('store');
+            Route::get('/{validacion}', [PerfilCorreoValidacionController::class, 'show'])->name('show');
+            Route::get('/{validacion}/pdf', [PerfilCorreoValidacionController::class, 'pdf'])->name('pdf');
+            Route::delete('/{validacion}', [PerfilCorreoValidacionController::class, 'destroy'])->name('destroy');
+        });
+    });
+
     Route::middleware(['modulo:red_infraestructura'])->group(function () {
         Route::resource('network', NetworkController::class);
         Route::post('/network/port/{id}', [NetworkController::class, 'updatePort'])->name('network.port.update');
@@ -170,6 +210,12 @@ Route::middleware('auth')->group(function () {
         // Reportes va antes de /{id} para que "reportes" no se interprete como un id de ticket.
         Route::get('/reportes', [TicketController::class, 'reportes'])->name('reportes');
         Route::get('/reportes/pdf', [TicketController::class, 'reportesPdf'])->name('reportes.pdf');
+        // Igual que /reportes: "operadores" también debe ir antes de /{id}
+        // para que no se interprete como un id de ticket.
+        Route::get('/operadores', [OperadorController::class, 'index'])->name('operadores.index');
+        Route::post('/operadores', [OperadorController::class, 'store'])->name('operadores.store');
+        Route::patch('/operadores/{operador}', [OperadorController::class, 'update'])->name('operadores.update');
+        Route::patch('/operadores/{operador}/estado', [OperadorController::class, 'toggleActivo'])->name('operadores.estado');
         Route::get('/{id}', [TicketController::class, 'show'])->name('show');
         Route::match(['PUT', 'PATCH'], '/{id}/resolver', [TicketController::class, 'resolve'])->name('resolve');
         Route::patch('/{id}/reasignar', [TicketController::class, 'reasignar'])->name('reasignar');

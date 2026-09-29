@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Operador;
 use App\Models\Scopes\HotelScope;
 use App\Models\Ticket;
 use App\Models\User;
@@ -45,7 +46,7 @@ class DashboardMetricsService
     public function metricas(User $user, string $hotelActivo): array
     {
         $tickets = $this->ticketsVisibles($user, $hotelActivo)
-            ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'created_at', 'fecha_resolucion']);
+            ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'operador_id', 'created_at', 'fecha_resolucion']);
 
         return [
             'total'                 => $tickets->count(),
@@ -91,7 +92,7 @@ class DashboardMetricsService
         $hasta = $hasta->copy()->endOfDay();
 
         $tickets = $this->ticketsVisibles($user, $hotelActivo)
-            ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'created_at', 'fecha_resolucion']);
+            ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'operador_id', 'created_at', 'fecha_resolucion']);
 
         $creados = $tickets->filter(
             fn ($t) => $t->created_at && $t->created_at->between($desde, $hasta)
@@ -244,7 +245,7 @@ class DashboardMetricsService
             ->whereNotNull('fecha_resolucion');
 
         if ($propios->isEmpty()) {
-            return ['total' => 0, 'horas_promedio' => null, 'slaCumplidos' => 0, 'slaPorcentaje' => null];
+            return ['total' => 0, 'horas_promedio' => null, 'slaCumplidos' => 0, 'slaPorcentaje' => null, 'porOperador' => []];
         }
 
         $cumplidos = $propios->filter(
@@ -258,7 +259,45 @@ class DashboardMetricsService
             ), 1),
             'slaCumplidos'   => $cumplidos,
             'slaPorcentaje'  => round(($cumplidos / $propios->count()) * 100, 1),
+            'porOperador'    => $this->porOperador($propios, $user),
         ];
+    }
+
+    /**
+     * "¿Cuántos tickets hizo Juan?" — desglose de los tickets propios del
+     * técnico (ya resueltos por él) agrupados por operador (ver Operador).
+     * Los operadores son un catálogo COMPARTIDO por departamento (ver
+     * Operador::scopeDeDepartamento) — un ticket resuelto por este técnico
+     * puede traer marcado un operador que dio de alta un compañero del
+     * mismo departamento (ej. Ana usa un operador que registró
+     * Beto), así que los nombres se resuelven por departamento, no por
+     * quién lo creó. Los tickets sin operador marcado quedan fuera: ese
+     * dato es opcional y no todos los técnicos lo usan.
+     */
+    private function porOperador(Collection $ticketsPropios, User $user): array
+    {
+        $conOperador = $ticketsPropios->whereNotNull('operador_id');
+
+        if ($conOperador->isEmpty()) {
+            return [];
+        }
+
+        $porOperador = $conOperador->groupBy('operador_id');
+
+        $nombres = Operador::deDepartamento($user->departamento)
+            ->whereIn('id', $porOperador->keys())
+            ->pluck('nombre', 'id');
+
+        return $porOperador
+            ->map(function (Collection $grupo, $operadorId) use ($nombres) {
+                return [
+                    'nombre' => $nombres->get($operadorId, "Operador #{$operadorId}"),
+                    'total'  => $grupo->count(),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values()
+            ->all();
     }
 
     private function horasEntre(?Carbon $desde, ?Carbon $hasta): ?float

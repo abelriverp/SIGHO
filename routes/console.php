@@ -16,4 +16,12 @@ Schedule::command('tickets:cerrar-vencidos')->hourly();
 // su tiempo de resolución (ver App\Services\SlaService y
 // App\Console\Commands\EscalarTicketsSla).
 Schedule::command('tickets:escalar-sla')->hourly();
+
+// Resumen quincenal para Gerente (días 15 y 30 de cada mes, 8:00 am): UN
+// correo por Gerente con todos los tickets pendientes de su propiedad, en
+// vez de un correo por cada ticket — a petición explícita del usuario de
+// no saturarlo de correos (ver App\Console\Commands\TicketsResumenPendientes
+// y App\Notifications\ResumenTicketsPendientesNotification). Cron directo
+// porque Schedule::monthlyOn() solo acepta UN día del mes, no dos.
+Schedule::command('tickets:resumen-pendientes')->cron('0 8 15,30 * *');
  

@@ -96,6 +96,28 @@
     </div>
     @endif
 
+    @php
+        // PDF/TXT adjuntados al reportar: no se pueden incrustar como imagen
+        // en este reporte (a diferencia de jpg/png/webp, que sí se embeben
+        // arriba como $fotosEvidenciaBase64), así que aquí solo se listan
+        // para que quede constancia de que existen y dónde verlos.
+        $rutasEvidenciaTicket = $ticket->archivos_evidencia ?: ($ticket->archivo_path ? [$ticket->archivo_path] : []);
+        $documentosEvidencia  = collect($rutasEvidenciaTicket)
+            ->filter(fn ($ruta) => in_array(strtolower(pathinfo($ruta, PATHINFO_EXTENSION)), ['pdf', 'txt']))
+            ->values();
+    @endphp
+    @if($documentosEvidencia->count() > 0)
+    <div class="info-section" style="margin-bottom: 25px;">
+        <div class="label">Documentos Adjuntos al Reportar</div>
+        <div class="value" style="margin-top: 5px;">
+            @foreach($documentosEvidencia as $i => $ruta)
+                @php $ext = strtolower(pathinfo($ruta, PATHINFO_EXTENSION)); @endphp
+                <div>{{ $i + 1 }}. Documento {{ strtoupper($ext) }} — ver en el sistema, sección "Evidencia Adjunta" del ticket.</div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     @if($ticket->notas_admin)
     <div class="info-section" style="margin-bottom: 25px;">
         <div class="label">Resolución Técnica</div>

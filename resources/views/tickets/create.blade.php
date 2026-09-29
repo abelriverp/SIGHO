@@ -134,17 +134,17 @@
                     placeholder="Explica detalladamente qué sucede, desde cuándo y qué intentaste hacer...">{{ old('descripcion') }}</textarea>
             </div>
 
-            {{-- Fotos / Video de Evidencia --}}
+            {{-- Foto / Video / Documento de Evidencia --}}
             <div x-data="evidenciaMultiple()">
-                <label class="block text-sm font-bold text-slate-700 mb-1">Foto o Video de Evidencia <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Foto, Video o Documento de Evidencia <span class="text-slate-400 font-normal">(Opcional)</span></label>
                 <input type="file" id="inputArchivos" name="archivos[]"
-                    accept="image/jpeg,image/png,image/jpg,video/mp4,video/quicktime"
+                    accept="image/jpeg,image/png,image/jpg,video/mp4,video/quicktime,application/pdf,text/plain"
                     multiple
                     @change="agregarArchivos($event)"
                     class="w-full text-sm text-slate-500 file:bg-[#041b32] file:text-white file:py-2 file:px-4 file:rounded file:border-0 cursor-pointer">
                 <p class="text-[10px] text-slate-400 mt-1 italic">
                     Puedes seleccionar varias fotos a la vez (mantén Ctrl o Shift al hacer clic), o volver a hacer clic en el botón para ir agregando de una en una.
-                    Máximo 6 archivos, 6 MB cada uno. Formatos: JPG, PNG, MP4, MOV.
+                    Máximo 6 archivos, 6 MB cada uno. Formatos: JPG, PNG, MP4, MOV, PDF, TXT.
                 </p>
 
                 {{-- Previsualización con opción de quitar --}}
@@ -156,7 +156,7 @@
                             </template>
                             <template x-if="!item.preview">
                                 <div class="w-full h-full flex flex-col items-center justify-center text-[9px] text-slate-500 p-1 text-center break-all">
-                                    <span class="text-lg">🎬</span>
+                                    <span class="text-lg" x-text="iconoPara(item.nombre)"></span>
                                     <span x-text="item.nombre"></span>
                                 </div>
                             </template>
@@ -223,6 +223,19 @@
                 const dt = new DataTransfer();
                 this.archivos.forEach(a => dt.items.add(a.file));
                 document.getElementById('inputArchivos').files = dt.files;
+            },
+
+            // Ícono de la previsualización cuando el archivo no es una imagen
+            // (no tiene "preview" de URL.createObjectURL). Antes siempre se
+            // mostraba 🎬 sin importar el tipo real, lo cual tenía sentido
+            // cuando solo se aceptaban fotos/video pero confundía en cuanto
+            // se permitieron PDF/TXT.
+            iconoPara(nombre) {
+                const ext = nombre.split('.').pop().toLowerCase();
+                if (ext === 'pdf') return '📄';
+                if (ext === 'txt') return '📝';
+                if (['mp4', 'mov'].includes(ext)) return '🎬';
+                return '📎';
             },
         };
     }

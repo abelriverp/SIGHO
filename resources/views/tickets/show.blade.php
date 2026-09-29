@@ -5,7 +5,10 @@
 
     {{-- Barra superior --}}
     <div class="flex justify-between items-center mb-4 no-print">
-        <a href="{{ route('tickets.index') }}" class="text-sm text-slate-500 hover:text-[#041b32] flex items-center gap-1">
+        {{-- $volverUrl: URL de /tickets con los filtros/orden que tenía el
+             usuario antes de entrar aquí (ver TicketController::show()).
+             Cae a la lista sin filtros si no venía navegando desde ahí. --}}
+        <a href="{{ $volverUrl ?? route('tickets.index') }}" class="text-sm text-slate-500 hover:text-[#041b32] flex items-center gap-1">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
@@ -93,6 +96,31 @@
             </span>
         </div>
 
+        {{-- ============================================ --}}
+        {{-- AVISO: recordatorio sin explicación            --}}
+        {{-- Se envió un recordatorio y nadie de soporte ha --}}
+        {{-- comentado desde entonces. Bloquea "Resolver"   --}}
+        {{-- (ver TicketController::resolve()) hasta que    --}}
+        {{-- alguien del departamento explique qué pasa.     --}}
+        {{-- ============================================ --}}
+        @php
+            $requiereJustificacion = $ticket->requiereJustificacionRecordatorio();
+        @endphp
+        @if($requiereJustificacion && in_array($ticket->status, ['Abierto', 'Reabierto']) && auth()->user()->puedeResponderTickets())
+            <div class="px-6 py-4 bg-amber-50 border-b-4 border-amber-400 no-print">
+                <p class="text-sm font-bold text-amber-800">⚠️ Este ticket tiene un recordatorio pendiente sin explicación.</p>
+                <p class="text-xs text-amber-700 mt-1">
+                    El usuario avisó que lleva días sin atención visible. Antes de poder resolverlo, cuenta en la bitácora qué está pasando (ej. "sin atender por falta de material", "en espera de refacción", "ya se agendó visita")
+                    @if(auth()->user()->isAdmin())
+                        — como Administrador puedes resolverlo directamente si lo prefieres.
+                    @else
+                        .
+                    @endif
+                </p>
+                <a href="#agregar-nota" class="inline-block mt-2 text-xs font-bold text-amber-800 underline hover:text-amber-900">Comentar ahora ↓</a>
+            </div>
+        @endif
+
         {{-- Datos del ticket --}}
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div class="space-y-4">
@@ -154,7 +182,15 @@
                 <div class="pt-4 border-t border-slate-100">
                     <h4 class="text-xs font-bold text-green-600 uppercase tracking-wider">Solución aplicada por soporte</h4>
                     <p class="text-slate-700 mt-1">{{ $ticket->notas_admin }}</p>
-                    <p class="text-[10px] text-slate-400 mt-2 italic">Resuelto el: {{ $ticket->fecha_resolucion?->format('d/m/Y H:i') }}</p>
+                    <p class="text-[10px] text-slate-400 mt-2 italic">
+                        Resuelto el: {{ $ticket->fecha_resolucion?->format('d/m/Y H:i') }}
+                        @if($ticket->resolvedBy)
+                            — por {{ $ticket->resolvedBy->name }}
+                        @endif
+                        @if($ticket->operador)
+                            (operador: {{ $ticket->operador->nombre }})
+                        @endif
+                    </p>
                 </div>
                 @endif
 
@@ -232,6 +268,14 @@
                                         <video controls class="w-full max-h-64">
                                             <source src="{{ Storage::url($ruta) }}" type="video/{{ $extension }}">
                                         </video>
+                                    @else
+                                        {{-- PDF/TXT (u otro archivo no previsualizable): no se puede
+                                             incrustar como imagen/video, se ofrece como descarga. --}}
+                                        <a href="{{ Storage::url($ruta) }}" target="_blank" rel="noopener"
+                                           class="flex flex-col items-center justify-center gap-1 h-40 bg-slate-50 hover:bg-slate-100 transition text-slate-500">
+                                            <span class="text-3xl">{{ $extension === 'pdf' ? '📄' : ($extension === 'txt' ? '📝' : '📎') }}</span>
+                                            <span class="text-xs font-bold uppercase">Ver {{ strtoupper($extension) }}</span>
+                                        </a>
                                     @endif
                                 </div>
                             @endforeach
@@ -281,8 +325,12 @@
 
         {{-- ============================================ --}}
         {{-- BLOQUE RESOLVER (técnico/admin)              --}}
+        {{-- Oculto para técnicos mientras $requiereJustificacion --}}
+        {{-- sea true (ver aviso arriba) — Admin sí lo ve, puede  --}}
+        {{-- saltarse el requisito. Coincide con el bloqueo real  --}}
+        {{-- del lado del servidor en TicketController::resolve().--}}
         {{-- ============================================ --}}
-        @if(in_array($ticket->status, ['Abierto', 'Reabierto']) && auth()->user()->puedeResponderTickets() && auth()->id() !== $ticket->user_id)
+        @if(in_array($ticket->status, ['Abierto', 'Reabierto']) && auth()->user()->puedeResponderTickets() && auth()->id() !== $ticket->user_id && !($requiereJustificacion && !auth()->user()->isAdmin()))
             <div class="px-6 py-6 border-t border-slate-200 bg-slate-50 no-print"
                  x-data="fotoPreview()">
                 <h4 class="text-sm font-bold text-slate-700 mb-4">Registrar solución y cerrar ticket</h4>
@@ -296,6 +344,29 @@
                     <textarea name="notas_admin" required rows="3"
                         class="w-full border border-slate-300 rounded-lg mb-4 text-sm p-3 focus:outline-none focus:border-[#041b32]"
                         placeholder="Describe detalladamente cómo se solucionó el problema..."></textarea>
+
+                    {{-- Operador que ejecutó el trabajo (opcional, solo lista del propio técnico) --}}
+                    @if(auth()->user()->isTecnico())
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">
+                                Operador que ejecutó el trabajo
+                                <span class="text-slate-400 font-normal">(opcional, solo para dejar constancia)</span>
+                            </label>
+                            @if($misOperadores->isEmpty())
+                                <p class="text-xs text-slate-400">
+                                    No tienes operadores registrados.
+                                    <a href="{{ route('tickets.operadores.index') }}" class="text-blue-500 hover:underline">Agregar uno</a>.
+                                </p>
+                            @else
+                                <select name="operador_id" class="w-full border border-slate-300 rounded-lg text-sm p-2 focus:outline-none focus:border-[#041b32]">
+                                    <option value="">— Ninguno —</option>
+                                    @foreach($misOperadores as $op)
+                                        <option value="{{ $op->id }}">{{ $op->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
+                        </div>
+                    @endif
 
                     {{-- Upload fotos de resolución --}}
                     <div class="mb-4">
@@ -339,14 +410,17 @@
         @endif
 
         {{-- ============================================ --}}
-        {{-- BLOQUE: ENVIAR RECORDATORIO (usuario reportante) --}}
-        {{-- Para cuando el ticket lleva varios días abierto y el   --}}
-        {{-- reportante no ve seguimiento. Distinto de la escalación --}}
-        {{-- automática por SLA: esto lo dispara la persona, avisa   --}}
-        {{-- de nuevo al departamento responsable. Umbral: 2 días    --}}
-        {{-- desde la creación. Cooldown: 24h entre uno y el siguiente. --}}
+        {{-- BLOQUE: ENVIAR RECORDATORIO                    --}}
+        {{-- Para cuando el ticket lleva varios días abierto --}}
+        {{-- sin seguimiento visible. Distinto de la escalación --}}
+        {{-- automática por SLA: esto lo dispara una persona,  --}}
+        {{-- avisa de nuevo al departamento responsable. Quién  --}}
+        {{-- puede: el reportante, o Admin/Gerente aunque no    --}}
+        {{-- sea su ticket (ver TicketPolicy::recordatorio()).  --}}
+        {{-- Umbral: 2 días desde la creación. Cooldown: 24h    --}}
+        {{-- entre uno y el siguiente — aplica igual para todos. --}}
         {{-- ============================================ --}}
-        @if(in_array($ticket->status, ['Abierto', 'Reabierto']) && auth()->id() === $ticket->user_id)
+        @if(in_array($ticket->status, ['Abierto', 'Reabierto']) && (auth()->id() === $ticket->user_id || auth()->user()->puedeVerTodos()))
             @php
                 $diasAbierto = $ticket->created_at->diffInDays(now());
                 $cumpleUmbralRecordatorio = $diasAbierto >= 2;
@@ -357,13 +431,15 @@
                 $puedeRecordar = $cumpleUmbralRecordatorio && !$enCooldownRecordatorio;
             @endphp
             <div class="px-6 py-6 border-t border-slate-200 bg-slate-50 no-print">
-                <h4 class="text-sm font-bold text-slate-700 mb-1">¿No ves seguimiento en tu ticket?</h4>
+                <h4 class="text-sm font-bold text-slate-700 mb-1">
+                    {{ auth()->id() === $ticket->user_id ? '¿No ves seguimiento en tu ticket?' : '¿Sin seguimiento visible?' }}
+                </h4>
                 <p class="text-xs text-slate-500 mb-3">
                     Lleva {{ $diasAbierto }} {{ $diasAbierto == 1 ? 'día' : 'días' }} abierto.
                     @if($puedeRecordar)
                         Puedes avisarle de nuevo al departamento responsable.
                     @elseif($enCooldownRecordatorio)
-                        Ya enviaste un recordatorio; podrás enviar otro en {{ 24 - $horasDesdeUltimoRecordatorio }} horas.
+                        Ya se envió un recordatorio; podrás enviar otro en {{ 24 - $horasDesdeUltimoRecordatorio }} horas.
                     @else
                         Podrás enviar un recordatorio a partir de los 2 días de abierto.
                     @endif
@@ -595,9 +671,14 @@
 
             {{-- Formulario agregar nota (solo técnico/admin/gerente) --}}
             @if(auth()->user()->puedeResponderTickets() || auth()->user()->isGerente())
-                <form action="{{ route('tickets.notas.store', $ticket->id) }}" method="POST" class="border-t border-slate-100 pt-4">
+                <form id="agregar-nota" action="{{ route('tickets.notas.store', $ticket->id) }}" method="POST" class="border-t border-slate-100 pt-4 scroll-mt-24">
                     @csrf
-                    <label class="block text-xs font-bold text-slate-600 mb-2">Agregar nota de seguimiento</label>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">
+                        Agregar nota de seguimiento
+                        @if($requiereJustificacion)
+                            <span class="text-amber-600 font-normal normal-case">— explica aquí por qué el ticket sigue en pausa</span>
+                        @endif
+                    </label>
                     <textarea name="nota" required rows="2"
                         class="w-full border border-slate-300 rounded-lg text-sm p-3 mb-2 focus:outline-none focus:border-[#041b32]"
                         placeholder="Escribe una nota de seguimiento..."></textarea>

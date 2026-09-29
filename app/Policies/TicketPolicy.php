@@ -155,19 +155,22 @@ class TicketPolicy
     }
 
     /**
-     * Puede enviar un recordatorio manual de ESTE ticket: solo quien lo
-     * reportó. El umbral de 2 días desde la creación y el cooldown de 24h
-     * entre recordatorios son reglas de tiempo/estado, no de permiso — se
-     * quedan en el controller con su propio back()->with('error', ...),
-     * igual que el resto de la máquina de estados.
+     * Puede enviar un recordatorio manual de ESTE ticket: quien lo reportó,
+     * o Admin/Gerente aunque no sea su ticket (piden supervisar cualquier
+     * ticket "atorado" sin depender de que el usuario original se acuerde
+     * de reclamarlo). El umbral de 2 días desde la creación y el cooldown
+     * de 24h entre recordatorios son reglas de tiempo/estado, no de
+     * permiso — se quedan en el controller con su propio
+     * back()->with('error', ...), igual que el resto de la máquina de
+     * estados, y aplican por igual sin importar quién lo dispare.
      */
     public function recordatorio(User $user, Ticket $ticket): Response
     {
-        if ($ticket->user_id !== $user->id) {
-            return Response::deny('Solo el usuario que reportó puede enviar un recordatorio de este ticket.');
+        if ($ticket->user_id === $user->id || $user->puedeVerTodos()) {
+            return Response::allow();
         }
 
-        return Response::allow();
+        return Response::deny('Solo el usuario que reportó, un Administrador o un Gerente puede enviar un recordatorio de este ticket.');
     }
 
     /**

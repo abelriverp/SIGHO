@@ -312,6 +312,20 @@
                                     <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $graficas['miDesempeno']['slaCumplidos'] }} / {{ $graficas['miDesempeno']['total'] }}</p>
                                 </div>
                             </div>
+
+                            {{-- "¿Cuántos tickets hizo Juan?": desglose por operador, solo si el técnico marcó alguno al resolver --}}
+                            @if(!empty($graficas['miDesempeno']['porOperador']))
+                                <div class="mt-5 pt-4 border-t border-gray-100">
+                                    <p class="text-xs font-bold text-gray-400 uppercase mb-2">Por operador</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($graficas['miDesempeno']['porOperador'] as $fila)
+                                            <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full">
+                                                {{ $fila['nombre'] }}: <span class="font-bold">{{ $fila['total'] }}</span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
                         @endif
                     </div>
                 @endif

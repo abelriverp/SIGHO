@@ -6,6 +6,7 @@ use App\Models\Ticket;
 use App\Models\TicketNota;
 use App\Models\User;
 use App\Models\Departamento;
+use App\Models\Operador;
 use App\Models\AuditLog;
 use App\Notifications\NuevoTicketNotification;
 use App\Notifications\TicketReasignadoNotification;
@@ -385,7 +386,7 @@ class TicketController extends Controller
             'descripcion'           => 'required|string',
             'prioridad'             => 'required|string|in:Baja,Media,Alta',
             'archivos'              => 'nullable|array|max:6',
-            'archivos.*'            => 'file|mimes:jpeg,png,jpg,mp4,mov|max:6144',
+            'archivos.*'            => 'file|mimes:jpeg,png,jpg,mp4,mov,pdf,txt|max:6144',
         ];
 
         $categoriaSel    = $tieneCategorias ? $categorias->firstWhere('id', (int) $request->input('tipo_solicitud')) : null;
@@ -423,7 +424,7 @@ class TicketController extends Controller
             'archivos.max' => 'Puedes adjuntar máximo 6 archivos.',
             'archivos.*.uploaded' => 'Uno de los archivos no se pudo subir porque es demasiado grande para la configuración actual del servidor. Intenta con un archivo más pequeño o contacta a sistemas.',
             'archivos.*.max' => 'Cada archivo no puede pesar más de 6 MB.',
-            'archivos.*.mimes' => 'Cada archivo debe ser una imagen (jpg, png) o un video (mp4, mov).',
+            'archivos.*.mimes' => 'Cada archivo debe ser una imagen (jpg, png), un video (mp4, mov), o un documento (pdf, txt).',
         ]);
 
         // campos_extra guarda un snapshot legible (etiquetas de categoría,
@@ -489,14 +490,42 @@ class TicketController extends Controller
     // ==========================================
     public function show($id)
     {
-        $ticket = Ticket::with(['user', 'notas.user'])->findOrFail($id);
+        $ticket = Ticket::with(['user', 'notas.user', 'resolvedBy', 'operador'])->findOrFail($id);
         $user   = auth()->user();
 
         if (!$user->can('view', $ticket)) {
             abort(403, 'No tienes permiso para ver este ticket.');
         }
 
-        return view('tickets.show', compact('ticket'));
+        // "Volver al listado" (ver tickets/show.blade.php) debe respetar
+        // los filtros/orden que el usuario tenía puestos en /tickets, no
+        // regresarlo siempre a la lista en blanco. Guardamos en SESIÓN la
+        // URL de origen SOLO cuando de verdad se llegó aquí navegando
+        // desde /tickets (con o sin filtros) — nunca cuando se llega desde
+        // otro lado (ej. un link del dashboard) ni cuando la "anterior" es
+        // este mismo ticket (que es lo que pasa en el redirect de vuelta
+        // después de resolver/reasignar/agregar nota: esas acciones no
+        // deben pisar el valor ya guardado). Así sobrevive intacto aunque
+        // el usuario haga varias acciones sobre el ticket antes de volver.
+        $indexUrl = route('tickets.index');
+        $previa   = url()->previous();
+        if ($previa === $indexUrl || str_starts_with($previa, $indexUrl . '?')) {
+            session(['tickets.volver' => $previa]);
+        }
+        $volverUrl = session('tickets.volver', $indexUrl);
+
+        // Solo se usa dentro del bloque "Registrar solución" del técnico
+        // (ver tickets/show.blade.php); es el catálogo COMPARTIDO de
+        // operadores activos de su departamento (no solo los que él dio de
+        // alta — ver Operador::scopeDeDepartamento), para dejar constancia
+        // opcional de quién ejecutó el trabajo. Consulta barata y se
+        // calcula siempre para no acoplar la vista a la máquina de estados
+        // del ticket.
+        $misOperadores = $user->isTecnico()
+            ? Operador::deDepartamento($user->departamento)->activos()->orderBy('nombre')->get()
+            : collect();
+
+        return view('tickets.show', compact('ticket', 'misOperadores', 'volverUrl'));
     }
 
     // ==========================================
@@ -517,15 +546,45 @@ class TicketController extends Controller
             abort(403, $autorizacion->message());
         }
 
+        // Si ya se envió un recordatorio y nadie de soporte ha dejado una
+        // nota desde entonces, primero hay que explicar por qué el ticket
+        // sigue "en pausa" (ej. falta de material) — no se puede resolver
+        // en silencio después de una queja por inactividad. Admin puede
+        // saltarse esto para desatorar el caso manualmente, igual que ya
+        // hace con el límite de reasignaciones y la ventana de deshacer.
+        if (!$user->isAdmin() && $ticket->requiereJustificacionRecordatorio()) {
+            return back()->with('error', 'Este ticket tiene un recordatorio pendiente sin explicación. Antes de resolverlo, agrega una nota en la bitácora contando qué ha pasado (ej. "sin atender por falta de material").');
+        }
+
         $request->validate([
             'notas_admin'        => 'required|string',
             'fotos_resolucion'   => 'nullable|array|max:4',
             'fotos_resolucion.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
+            'operador_id'        => 'nullable|integer|exists:operadores,id',
         ], [
             'fotos_resolucion.*.uploaded' => 'Una de las fotos no se pudo subir porque es demasiado grande para la configuración actual del servidor.',
             'fotos_resolucion.*.max' => 'Cada foto no puede pesar más de 4 MB.',
             'fotos_resolucion.*.image' => 'Cada archivo debe ser una imagen (jpg, png, webp).',
         ]);
+
+        // El operador (si se marcó) debe salir del catálogo del DEPARTAMENTO
+        // del técnico que resuelve, activo — nunca del id crudo del
+        // request. Evita que alguien mande el id de un operador de otro
+        // departamento/propiedad o ya desactivado (BelongsToHotel +
+        // deDepartamento + activos() lo garantizan; find() regresa null si
+        // no cumple alguna).
+        $operadorId = null;
+        if ($request->filled('operador_id')) {
+            $operador = Operador::activos()->deDepartamento($user->departamento)->find($request->operador_id);
+
+            if (!$operador) {
+                return back()
+                    ->withErrors(['operador_id' => 'Ese operador no está disponible para tu departamento o ya no está activo.'])
+                    ->withInput();
+            }
+
+            $operadorId = $operador->id;
+        }
 
         $rutas = [];
         if ($request->hasFile('fotos_resolucion')) {
@@ -546,12 +605,18 @@ class TicketController extends Controller
             'token_resolucion' => $token,
             'ip_resolucion'    => $request->ip(),
             'resolved_by'      => $user->id,
+            'operador_id'      => $operadorId,
         ]);
+
+        $notaResolucion = 'Ticket marcado como resuelto. Solución: ' . $request->notas_admin . ' | Token de resolución: ' . $token;
+        if ($operadorId) {
+            $notaResolucion .= ' | Operador: ' . $operador->nombre;
+        }
 
         TicketNota::create([
             'ticket_id'     => $ticket->id,
             'user_id'       => $user->id,
-            'nota'          => 'Ticket marcado como resuelto. Solución: ' . $request->notas_admin . ' | Token de resolución: ' . $token,
+            'nota'          => $notaResolucion,
             'tipo'          => 'publica',
             'es_automatica' => true,
         ]);
@@ -565,7 +630,7 @@ class TicketController extends Controller
             "Resolvió el ticket #{$ticket->id} (\"{$ticket->area}\", reportado por {$ticket->user->name}). Token: {$token}.",
             $ticket,
             $antes,
-            $ticket->fresh()->only(['status', 'notas_admin', 'fecha_resolucion', 'token_resolucion', 'resolved_by'])
+            $ticket->fresh()->only(['status', 'notas_admin', 'fecha_resolucion', 'token_resolucion', 'resolved_by', 'operador_id'])
         );
 
         return redirect()->route('tickets.show', $ticket->id)
@@ -579,6 +644,13 @@ class TicketController extends Controller
     // bitácora y auditoría, y no se pueda reasignar "porque sí". Limita
     // el número de reasignaciones para evitar que el ticket rebote entre
     // departamentos sin que nadie lo atienda.
+    //
+    // A propósito NO se bloquea aquí por Ticket::requiereJustificacionRecordatorio()
+    // (a diferencia de resolve()): reasignar YA exige motivo_reasignacion
+    // (mín. 10 caracteres) y ese motivo queda como nota en la bitácora —
+    // es en sí mismo la explicación de qué está pasando con el ticket. Pedir
+    // una nota aparte ANTES de poder escribir esa nota sería fricción doble
+    // sin beneficio real.
     // ==========================================
     public function reasignar(Request $request, $id)
     {
@@ -816,10 +888,13 @@ class TicketController extends Controller
 
         $ticket->update(['ultimo_recordatorio_at' => now()]);
 
+        // Texto neutral (no "el usuario envió...") porque ahora también lo
+        // puede disparar Admin/Gerente sobre un ticket que no reportaron
+        // — el autor real ya queda identificado por user_id/$nota->user.
         TicketNota::create([
             'ticket_id'     => $ticket->id,
             'user_id'       => $user->id,
-            'nota'          => "El usuario envió un recordatorio: el ticket lleva {$diasAbierto} días abierto sin seguimiento visible.",
+            'nota'          => "Se envió un recordatorio: el ticket lleva {$diasAbierto} días abierto sin seguimiento visible.",
             'tipo'          => 'publica',
             'es_automatica' => true,
         ]);
@@ -887,7 +962,7 @@ class TicketController extends Controller
             'motivo.min'      => 'Danos un poco más de detalle (mínimo 10 caracteres).',
         ]);
 
-        $antes = $ticket->only(['status', 'notas_admin', 'fecha_resolucion', 'token_resolucion', 'resolved_by']);
+        $antes = $ticket->only(['status', 'notas_admin', 'fecha_resolucion', 'token_resolucion', 'resolved_by', 'operador_id']);
 
         $ticket->update([
             'status'           => 'Abierto',
@@ -897,6 +972,7 @@ class TicketController extends Controller
             'token_resolucion' => null,
             'ip_resolucion'    => null,
             'resolved_by'      => null,
+            'operador_id'      => null,
         ]);
 
         TicketNota::create([
@@ -912,7 +988,7 @@ class TicketController extends Controller
             "Deshizo la resolución del ticket #{$ticket->id} (\"{$ticket->area}\") por error de captura. Motivo: {$request->motivo}",
             $ticket,
             $antes,
-            $ticket->fresh()->only(['status', 'notas_admin', 'fecha_resolucion', 'token_resolucion', 'resolved_by'])
+            $ticket->fresh()->only(['status', 'notas_admin', 'fecha_resolucion', 'token_resolucion', 'resolved_by', 'operador_id'])
         );
 
         return redirect()->route('tickets.show', $ticket->id)

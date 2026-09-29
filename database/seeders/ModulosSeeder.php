@@ -73,6 +73,15 @@ class ModulosSeeder extends Seeder
                 'activo'      => true,
                 'orden'       => 7,
             ],
+            [
+                'clave'       => 'herramientas_recepcion',
+                'nombre'      => 'Herramientas de Recepción',
+                'descripcion' => 'Validador de correos de huéspedes y detector de extensiones de estancia a partir de los PDF de reservas',
+                'icono'       => 'envelope-open',
+                'ruta_base'   => 'recepcion.index',
+                'activo'      => true,
+                'orden'       => 8,
+            ],
         ];
 
         foreach ($modulos as $modulo) {

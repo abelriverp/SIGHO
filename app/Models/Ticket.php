@@ -14,6 +14,7 @@ class Ticket extends Model
         'hotel_code',
         'user_id',
         'resolved_by',
+        'operador_id',
         'area',
         'departamento_destino',
         'veces_reasignado',
@@ -55,9 +56,53 @@ class Ticket extends Model
         return $this->belongsTo(User::class);
     }
 
+    // Usuario (técnico/admin) que marcó ESTE ticket como resuelto. Distinto
+    // de operador(): este siempre tiene cuenta en el sistema.
+    public function resolvedBy()
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
+
     // Relación con las notas de la bitácora
     public function notas()
     {
         return $this->hasMany(TicketNota::class);
+    }
+
+    // Operador (sin cuenta en el sistema) que quedó registrado como quien
+    // ejecutó el trabajo, aparte de quien lo marcó resuelto (resolved_by).
+    public function operador()
+    {
+        return $this->belongsTo(Operador::class);
+    }
+
+    /**
+     * true si se envió un recordatorio (ultimo_recordatorio_at) y desde
+     * entonces NADIE del lado de soporte (técnico/admin/gerente — cualquier
+     * user_id distinto al que reportó el ticket) ha dejado una nota en la
+     * bitácora explicando qué pasa con el ticket. Mientras esto sea true,
+     * TicketController bloquea resolver/reasignar (ver TicketPolicy y
+     * TicketController::resolve()/reasignar()): antes de tocar el ticket,
+     * el departamento debe explicar por qué sigue "en pausa" (ej. falta de
+     * material) — no basta con resolverlo o reasignarlo en silencio.
+     *
+     * Se calcula a partir de datos que YA existen (ultimo_recordatorio_at +
+     * timestamps de notas), sin columna nueva: en cuanto alguien de soporte
+     * agrega CUALQUIER nota después del recordatorio, esto vuelve a false
+     * solo. Nota: si nadie ha cargado la relación `notas`, dispara una
+     * consulta ligera (exists()); llamar dentro de un loop de muchos
+     * tickets sin eager-load causaría N+1 — no es el caso de uso actual
+     * (se llama sobre UN ticket en tickets/show.blade.php).
+     */
+    public function requiereJustificacionRecordatorio(): bool
+    {
+        if (!$this->ultimo_recordatorio_at) {
+            return false;
+        }
+
+        return !$this->notas()
+            ->where('user_id', '!=', $this->user_id)
+            ->where('created_at', '>=', $this->ultimo_recordatorio_at)
+            ->exists();
     }
 }
