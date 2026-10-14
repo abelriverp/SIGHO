@@ -18,7 +18,7 @@
 </head>
 <body>
     <div class="header">
-        <h2 style="margin:0;">HOTEL EMPORIO MAZATLÁN</h2>
+        <h2 style="margin:0;">{{ mb_strtoupper(\App\Models\Hotel::nombrePara($hotelActivo)) }}</h2>
         <p style="margin:5px 0 0 0;">Corte de Tickets — {{ \Illuminate\Support\Carbon::parse($metricas['desde'])->format('d/m/Y') }} al {{ \Illuminate\Support\Carbon::parse($metricas['hasta'])->format('d/m/Y') }}</p>
     </div>
 

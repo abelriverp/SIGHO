@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('habitacion_activos', function (Blueprint $table) {
-            $table->string('hotel_code', 10)->default('HEMZT')->after('id');
+            $table->string('hotel_code', 10)->default(config('app.hotel_code'))->after('id');
             $table->index('hotel_code');
         });
     }

@@ -16,7 +16,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('tickets')->whereNull('hotel_code')->update([
-            'hotel_code' => strtoupper(env('HOTEL_CODE', 'HEMZT')),
+            'hotel_code' => config('app.hotel_code'),
         ]);
     }
 

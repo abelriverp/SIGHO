@@ -42,7 +42,7 @@
                 <input type="text"
                        name="token"
                        value="{{ request('token') }}"
-                       placeholder="Verificar token de auditoría — ej. HEMZT-2026-00042-R9KF"
+                       placeholder="Verificar token de auditoría — ej. {{ config('app.hotel_code') }}-2026-00042-R9KF"
                        class="w-full border border-slate-300 rounded-lg pl-10 pr-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#041b32] uppercase placeholder:normal-case placeholder:font-sans"
                        autocomplete="off"
                        oninput="this.value = this.value.toUpperCase()">

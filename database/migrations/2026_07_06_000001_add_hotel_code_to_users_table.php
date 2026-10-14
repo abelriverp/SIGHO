@@ -17,12 +17,12 @@ return new class extends Migration
         // Nos aseguramos de que exista la propiedad activa actual en el catálogo
         // 'hoteles' ANTES de asignarla a los usuarios (evita violar la FK de abajo
         // en una instalación nueva donde el catálogo todavía está vacío).
-        $hotelCodeActual = strtoupper(env('HOTEL_CODE', 'HEMZT'));
+        $hotelCodeActual = config('app.hotel_code');
 
         DB::table('hoteles')->updateOrInsert(
             ['hotel_code' => $hotelCodeActual],
             [
-                'nombre'     => 'Hotel Emporio Mazatlán',
+                'nombre'     => config('app.hotel_nombre'),
                 'tipo'       => 'hotel',
                 'created_at' => now(),
                 'updated_at' => now(),

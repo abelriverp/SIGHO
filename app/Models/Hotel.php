@@ -68,6 +68,21 @@ class Hotel extends Model
             return strtoupper($user->hotel_code);
         }
 
-        return strtoupper(env('HOTEL_CODE', 'HEMZT'));
+        return config('app.hotel_code');
+    }
+
+    /**
+     * Nombre legible de una propiedad para encabezados (PDFs, reportes).
+     * Sale del catálogo `hoteles`; si el código no existe o viene vacío,
+     * cae al nombre configurado para esta instalación (.env → HOTEL_NOMBRE).
+     * Evita hardcodear "Hotel Emporio Mazatlán" en las vistas.
+     */
+    public static function nombrePara(?string $hotelCode): string
+    {
+        $nombre = $hotelCode
+            ? self::where('hotel_code', strtoupper($hotelCode))->value('nombre')
+            : null;
+
+        return $nombre ?: config('app.hotel_nombre');
     }
 }

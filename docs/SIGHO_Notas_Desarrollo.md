@@ -219,5 +219,18 @@ Módulo `herramientas_recepcion` (ruta base `recepcion.index`, orden 8 en `Modul
 - Contabilidad para condominios (fases A–D).
 - Posibles mejoras de Recepción: exportar CSV, botón de reanalizar, tests de controlador, filtro de palabras-ruido en nombres, unificar etiquetas en `email/index`.
 - Quitar el nombre de hotel hardcodeado en `tickets/reportes_pdf.blade.php`.
-- Para Cancún: definir el nuevo `HOTEL_CODE` y dar de alta la propiedad.
+- Para Cancún: confirmar el `HOTEL_CODE` definitivo (en `.env.example` quedó `HECUN` como propuesta).
 - Limpieza: borrar `storage/app/_to_delete_tmp_debug` si todavía existe.
+- Responsividad: sigue pendiente (sección 12).
+
+## 15. Instalación por propiedad / copia limpia para Cancún (2026-10-13)
+
+- Guía paso a paso: `docs/INSTALACION_NUEVA_PROPIEDAD.md`.
+- **Regla nueva:** nunca usar `env('HOTEL_CODE')` en código, vistas, migraciones ni seeders; usar `config('app.hotel_code')`. Con `php artisan config:cache`, `env()` regresa null fuera de `/config` y todo caía en silencio al default `HEMZT` (una instalación de Cancún habría quedado registrada como Mazatlán).
+- `config/app.php` concentra la propiedad: `hotel_code`, `hotel_nombre`, `hotel_ciudad`, `hotel_ubicacion` (vía `HOTEL_CODE`, `HOTEL_NOMBRE`, `HOTEL_CIUDAD`, `HOTEL_UBICACION`) y `timezone` (vía `APP_TIMEZONE`). Los defaults son los de Mazatlán para que un `.env` que solo trae `HOTEL_CODE` siga igual.
+- Se quitaron los textos fijos de Mazatlán de login, cambio de contraseña, menú, PDF de ticket, corte de tickets (resuelve el pendiente de `reportes_pdf`), dashboard (`HEMZT-TK-`) y placeholders. Los PDFs usan `Hotel::nombrePara($hotelCode)`: nombre del catálogo, con fallback a `HOTEL_NOMBRE`.
+- `DatabaseSeeder` ahora llama a `ModulosSeeder` (antes una base nueva quedaba sin módulos) y ya no crea `admin@emporio.com / admin123` (además quedaba con rol `usuario`). El primer Administrador se crea con `php artisan sigho:crear-admin`.
+- `routes/console.php` tenía una línea `PHP` antes de `<?php`: cada comando de artisan la imprimía.
+- `EmailValidatorServiceTest` inyecta un resolver DNS falso en `setUp()`; antes fallaba sin salida a internet.
+- Se borraron del repo `app.zip` (copia vieja de `app/` de abril) y el archivo vacío `delete()`.
+- Verificado en sandbox con PHP 8.3 + SQLite: `migrate:fresh --seed`, `config:cache`, `sigho:crear-admin`, login, dashboard y ambos PDFs mostrando Cancún; 131/131 pruebas. **Falta correrlo contra MySQL en XAMPP.**

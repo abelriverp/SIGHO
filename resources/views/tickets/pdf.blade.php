@@ -26,7 +26,7 @@
 </head>
 <body>
     <div class="header">
-        <h2 style="margin:0;">HOTEL EMPORIO MAZATLÁN</h2>
+        <h2 style="margin:0;">{{ mb_strtoupper(\App\Models\Hotel::nombrePara($ticket->hotel_code)) }}</h2>
         <p style="margin:5px 0 0 0;">Reporte de Soporte - Ticket #{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</p>
     </div>
 

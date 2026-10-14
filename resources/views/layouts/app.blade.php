@@ -41,7 +41,7 @@
 
                 <div class="flex items-center gap-3 shrink-0 pr-2 md:pr-4">
                     <img src="{{ asset('img/logo.jpg') }}" alt="Logo Hotel" class="h-9 md:h-10 w-auto object-contain">
-                    <span class="font-bold text-lg md:text-xl tracking-widest uppercase">Mazatlán</span>
+                    <span class="font-bold text-lg md:text-xl tracking-widest uppercase">{{ config('app.hotel_ciudad') }}</span>
                 </div>
 
                 {{-- flex-1 min-w-0 + justify-end: este bloque puede achicarse; el

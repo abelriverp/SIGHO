@@ -1,4 +1,3 @@
-PHP
 <?php
  
 use Illuminate\Foundation\Inspiring;

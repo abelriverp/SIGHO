@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('assets', function (Blueprint $table) {
             // Añadimos la columna hotel_code después de la columna id
-            $table->string('hotel_code')->default('HEMZT')->after('id');
+            $table->string('hotel_code')->default(config('app.hotel_code'))->after('id');
         });
     }
 

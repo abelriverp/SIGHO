@@ -2,29 +2,34 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Catálogos base para una instalación NUEVA, sin ningún dato operativo
+     * (tickets, inventario, usuarios, huéspedes).
+     *
+     * - Propiedad de esta instalación (desde el .env).
+     * - Catálogo de módulos. Sin esto nadie ve ningún módulo: la tabla
+     *   `modulos` no se llena en ninguna migración.
+     *
+     * Departamentos y categorías de tickets ya se siembran en sus
+     * migraciones. Ya no se crea un usuario con contraseña fija
+     * (antes admin@emporio.com / admin123, y además quedaba con rol
+     * 'usuario'): el primer Administrador se crea con
+     * `php artisan sigho:crear-admin`.
      */
     public function run(): void
     {
-        $this->call(HotelesSeeder::class);
-
-        // Nota: 'role' no se especifica aquí y por default queda en 'usuario'
-        // (ver migración add_role_to_users_table). Si este usuario debe ser
-        // Administrador, asígnale el rol manualmente después de crearlo.
-        User::create([
-            'name' => 'Admin Emporio',
-            'email' => 'admin@emporio.com',
-            'password' => Hash::make('admin123'), // Contraseña encriptada
+        $this->call([
+            HotelesSeeder::class,
+            ModulosSeeder::class,
         ]);
+
+        $this->command?->info('Catálogos base listos. Crea el primer Administrador con: php artisan sigho:crear-admin');
     }
 }

@@ -49,8 +49,9 @@ class TicketController extends Controller
     }
 
     // ==========================================
-    // HELPER: Generar token con formato HEMZT-YYYY-NNNNN-TXXXX
-    // Configurable desde .env → HOTEL_CODE=HEMZT
+    // HELPER: Generar token con formato CODIGOHOTEL-YYYY-NNNNN-TXXXX
+    // (ej. HEMZT-2026-00042-R9KF). El código sale de la propiedad del ticket
+    // o, en su defecto, de config('app.hotel_code') (.env → HOTEL_CODE)
     // T = tipo (R=Resolución, C=Confirmación, y a futuro más)
     // ==========================================
     private function generarToken(int $ticketId, string $tipo, ?string $hotelCode = null): string

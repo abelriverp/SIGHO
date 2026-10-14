@@ -65,7 +65,30 @@ return [
     |
     */
 
-   'timezone' => 'America/Mazatlan',
+    // Configurable por propiedad: Mazatlán = America/Mazatlan (UTC-7),
+    // Cancún = America/Cancun (UTC-5). El default conserva el
+    // comportamiento de la instalación original de Mazatlán.
+    'timezone' => env('APP_TIMEZONE', 'America/Mazatlan'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Propiedad de esta instalación (SIGHO)
+    |--------------------------------------------------------------------------
+    |
+    | Única fuente de verdad para el código y los textos de la propiedad.
+    | IMPORTANTE: el código nunca debe llamar env('HOTEL_CODE') directamente;
+    | con `php artisan config:cache` env() regresa null fuera de /config y
+    | todo caería al default. Usar siempre config('app.hotel_code').
+    |
+    | Los defaults conservan la instalación original de Mazatlán para que
+    | un .env que solo tenga HOTEL_CODE siga funcionando igual.
+    |
+    */
+
+    'hotel_code'      => strtoupper(env('HOTEL_CODE', 'HEMZT')),
+    'hotel_nombre'    => env('HOTEL_NOMBRE', 'Hotel Emporio Mazatlán'),
+    'hotel_ciudad'    => env('HOTEL_CIUDAD', 'Mazatlán'),
+    'hotel_ubicacion' => env('HOTEL_UBICACION', 'Hotel Emporio, Mazatlán, Sin.'),
 
     /*
     |--------------------------------------------------------------------------

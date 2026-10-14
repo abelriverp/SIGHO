@@ -17,7 +17,7 @@
                         class="w-full bg-slate-100 border border-slate-300 rounded-md py-2 px-3 text-slate-500 font-mono">
                     <p class="text-[10px] text-slate-400 mt-1 italic">El código no se puede cambiar una vez creado: ya está grabado en usuarios y registros de esta propiedad.</p>
                 @else
-                    <input type="text" name="hotel_code" value="{{ old('hotel_code') }}" required maxlength="10" placeholder="Ej: HEMZT"
+                    <input type="text" name="hotel_code" value="{{ old('hotel_code') }}" required maxlength="10" placeholder="Ej: {{ config('app.hotel_code') }}"
                         class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 font-mono uppercase">
                     <p class="text-[10px] text-slate-400 mt-1 italic">Solo letras/números, sin espacios. No podrás cambiarlo después.</p>
                 @endif
@@ -25,7 +25,7 @@
 
             <div>
                 <label class="block text-sm font-bold text-slate-700 mb-1">Nombre de la Propiedad</label>
-                <input type="text" name="nombre" value="{{ $hotel->nombre ?? old('nombre') }}" required placeholder="Ej: Hotel Emporio Mazatlán"
+                <input type="text" name="nombre" value="{{ $hotel->nombre ?? old('nombre') }}" required placeholder="Ej: {{ config('app.hotel_nombre') }}"
                     class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
             </div>
 

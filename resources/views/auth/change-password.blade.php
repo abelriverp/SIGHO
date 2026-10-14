@@ -18,7 +18,7 @@
             <div class="mb-6">
                 <img src="{{ asset('img/logo.jpg') }}" alt="Logo Hotel" class="w-40 h-auto object-contain">
             </div>
-            <h1 class="text-4xl font-bold tracking-[0.2em] uppercase mb-2">Mazatlán</h1>
+            <h1 class="text-4xl font-bold tracking-[0.2em] uppercase mb-2">{{ config('app.hotel_ciudad') }}</h1>
             <p class="text-sm opacity-70 tracking-widest">SISTEMA DE GESTIÓN HOTELERA</p>
         </div>
 
@@ -26,7 +26,7 @@
         <div class="w-1/2 p-12 flex flex-col justify-center">
             
             <div class="text-center mb-6">
-                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wide">Hotel Emporio, Mazatlán, Sin.</h2>
+                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wide">{{ config('app.hotel_ubicacion') }}</h2>
                 <h3 class="text-2xl font-bold mt-2 text-slate-800">Actualizar Contraseña</h3>
             </div>
 

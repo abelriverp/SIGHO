@@ -116,7 +116,7 @@
     @endif
 
     <div class="text-xs text-gray-400 mt-3 text-right">
-        {{ $unidades->total() }} unidad(es) total — Hotel: {{ env('HOTEL_CODE', 'MAZ') }}
+        {{ $unidades->total() }} unidad(es) total — Hotel: {{ config('app.hotel_code') }}
     </div>
 </div>
 @endsection

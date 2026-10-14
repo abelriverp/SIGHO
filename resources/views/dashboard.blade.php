@@ -179,7 +179,7 @@
                         @forelse($ultimosTickets as $ticket)
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="py-3 px-4 font-mono text-xs font-bold text-indigo-600 whitespace-nowrap">
-                                    HEMZT-TK-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}
+                                    {{ $ticket->hotel_code ?: config('app.hotel_code') }}-TK-{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}
                                 </td>
                                 <td class="py-3 px-4 text-gray-700 max-w-xs truncate">
                                     {{ $ticket->descripcion ?? 'Sin descripción' }}

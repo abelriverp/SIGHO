@@ -200,7 +200,7 @@
     @endif
 
     <div class="text-xs text-gray-400 mt-3 text-right">
-        {{ $items->total() }} artículo(s) total — Hotel: {{ env('HOTEL_CODE', 'MAZ') }}
+        {{ $items->total() }} artículo(s) total — Hotel: {{ config('app.hotel_code') }}
     </div>
 </div>
 @endsection

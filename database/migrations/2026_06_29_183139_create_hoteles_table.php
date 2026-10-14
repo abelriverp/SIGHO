@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('hoteles', function (Blueprint $blueprint) {
             $blueprint->id();
             $blueprint->string('hotel_code')->unique(); // Ejemplo: HEMZT, MAZ, etc.
-            $blueprint->string('nombre');       // Ejemplo: Hotel Emporio Mazatlán
+            $blueprint->string('nombre');       // Ejemplo: Hotel Emporio Cancún
             $blueprint->timestamps();
         });
     }

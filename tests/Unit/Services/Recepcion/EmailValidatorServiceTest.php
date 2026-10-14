@@ -18,7 +18,10 @@ class EmailValidatorServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new EmailValidatorService();
+        // Resolver DNS falso: la prueba no debe depender de que la máquina
+        // tenga salida a internet (fallaba en entornos sin DNS). Las pruebas
+        // que necesitan un dominio inexistente inyectan su propio resolver.
+        $this->service = new EmailValidatorService(fn (string $dominio): bool => true);
     }
 
     public function test_correo_valido_de_dominio_conocido_es_ok(): void
