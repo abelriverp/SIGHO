@@ -65,22 +65,13 @@ class ModulosSeeder extends Seeder
                 'orden'       => 6,
             ],
             [
-                'clave'       => 'condominios_checkin',
-                'nombre'      => 'Condominios / Check-in',
-                'descripcion' => 'Control de unidades, condóminos, reservas y check-in/check-out por propiedad',
-                'icono'       => 'building-office-2',
-                'ruta_base'   => 'condominios.estancias.index',
-                'activo'      => true,
-                'orden'       => 7,
-            ],
-            [
                 'clave'       => 'herramientas_recepcion',
                 'nombre'      => 'Herramientas de Recepción',
                 'descripcion' => 'Validador de correos de huéspedes y detector de extensiones de estancia a partir de los PDF de reservas',
                 'icono'       => 'envelope-open',
                 'ruta_base'   => 'recepcion.index',
                 'activo'      => true,
-                'orden'       => 8,
+                'orden'       => 7,
             ],
         ];
 

@@ -185,29 +185,6 @@
                         </div>
                         @endif
 
-                        {{-- 6. CONDOMINIOS / CHECK-IN --}}
-                        @if($user->tieneModulo('condominios_checkin'))
-                        <div class="relative group">
-                            <a href="{{ route('condominios.estancias.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('condominios.*') ? 'nav-pill-active' : '' }}">
-                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                    <rect x="4" y="3" width="16" height="18"></rect>
-                                    <rect x="7" y="6" width="3" height="3"></rect>
-                                    <rect x="14" y="6" width="3" height="3"></rect>
-                                    <rect x="7" y="12" width="3" height="3"></rect>
-                                    <rect x="14" y="12" width="3" height="3"></rect>
-                                </svg>
-                                <span>Condominios</span>
-                                <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </a>
-                            <div class="absolute left-0 top-full w-52 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
-                                <a href="{{ route('condominios.estancias.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Check-in / Estancias</a>
-                                <a href="{{ route('condominios.unidades.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Unidades</a>
-                                <a href="{{ route('condominios.condominos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Condóminos</a>
-                                <a href="{{ route('condominios.reportes') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📊 Reportes</a>
-                            </div>
-                        </div>
-                        @endif
-
                         {{-- 6.5. HERRAMIENTAS DE RECEPCIÓN --}}
                         @if($user->tieneModulo('herramientas_recepcion'))
                         <div class="relative group">
@@ -447,18 +424,6 @@
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18"></rect><rect x="10" y="13" width="4" height="8"></rect></svg>
                         Activos
                     </a>
-                </div>
-                @endif
-
-                @if($user->tieneModulo('condominios_checkin'))
-                <div class="border-t border-[#0a2f57]/60 pt-1 mt-1">
-                    <a href="{{ route('condominios.estancias.index') }}" @click="mobileMenuOpen = false" class="flex items-center gap-2 px-2 py-2.5 font-bold uppercase text-[13px] rounded {{ request()->routeIs('condominios.*') ? 'text-blue-400' : 'text-white hover:bg-[#0a2f57]' }}">
-                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18"></rect><rect x="7" y="6" width="3" height="3"></rect><rect x="14" y="6" width="3" height="3"></rect><rect x="7" y="12" width="3" height="3"></rect><rect x="14" y="12" width="3" height="3"></rect></svg>
-                        Condominios
-                    </a>
-                    <a href="{{ route('condominios.unidades.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Unidades</a>
-                    <a href="{{ route('condominios.condominos.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Condóminos</a>
-                    <a href="{{ route('condominios.reportes') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📊 Reportes</a>
                 </div>
                 @endif
 

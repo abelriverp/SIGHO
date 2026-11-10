@@ -4,12 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\ActivoItem;
 use App\Models\Asset;
-use App\Models\Condomino;
 use App\Models\Hotel;
 use App\Models\InventarioItem;
 use App\Models\NetworkDevice;
 use App\Models\Revision;
-use App\Models\Unidad;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -50,8 +48,6 @@ class DeleteAuthorizationTest extends TestCase
             'Asset'          => [Asset::class],
             'Revision'       => [Revision::class],
             'InventarioItem' => [InventarioItem::class],
-            'Unidad'         => [Unidad::class],
-            'Condomino'      => [Condomino::class],
             'NetworkDevice'  => [NetworkDevice::class],
             'ActivoItem'     => [ActivoItem::class],
         ];

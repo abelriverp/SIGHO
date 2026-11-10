@@ -1,0 +1,13 @@
+# SIGHO: solo la carpeta public/ debe ser visible desde el navegador.
+# Bloquea .env, codigo, bitacoras, .bat, etc.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ public/ [R=302,L]
+    RewriteRule ^(?!public/) - [F,L]
+</IfModule>
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>
+<FilesMatch "^\.env|\.(bat|log|md|patch|lock|json|xml)$">
+    Require all denied
+</FilesMatch>

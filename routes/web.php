@@ -7,7 +7,6 @@ use App\Http\Controllers\{
     TicketController, AdminSettingsController, HabitacionActivoController,
     ActivoPlantillaController, ActivoItemController,
     ProfileController, DashboardController,
-    UnidadController, CondominoController, EstanciaController,
     TicketCategoriaController, SlaPoliticaController,
     GuestPortalController, PuntoQrController, AnuncioController,
     OperadorController, RecepcionController, EmailValidacionController,
@@ -94,19 +93,6 @@ Route::middleware('auth')->group(function () {
         Route::get('inventory/reportes', [InventoryController::class, 'reportes'])->name('inventory.reportes');
         Route::resource('inventory', InventoryController::class);
         Route::post('inventory/{inventory}/movimiento', [InventoryController::class, 'registrarMovimiento'])->name('inventory.movimiento');
-    });
-
-    Route::middleware(['modulo:condominios_checkin'])->prefix('condominios')->name('condominios.')->group(function () {
-        // Reportes y estancias (check-in/check-out) van primero para no chocar con los resource
-        Route::get('/reportes', [EstanciaController::class, 'reportes'])->name('reportes');
-
-        Route::resource('estancias', EstanciaController::class)->only(['index', 'create', 'store', 'show']);
-        Route::post('estancias/{estancia}/checkin', [EstanciaController::class, 'checkin'])->name('estancias.checkin');
-        Route::post('estancias/{estancia}/checkout', [EstanciaController::class, 'checkout'])->name('estancias.checkout');
-        Route::post('estancias/{estancia}/cancelar', [EstanciaController::class, 'cancelar'])->name('estancias.cancelar');
-
-        Route::resource('unidades', UnidadController::class)->except(['show']);
-        Route::resource('condominos', CondominoController::class);
     });
 
     // Herramientas de Recepción: validador de correos de huéspedes y

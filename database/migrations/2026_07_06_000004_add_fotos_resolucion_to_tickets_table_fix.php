@@ -21,10 +21,10 @@ return new class extends Migration
                 $table->json('fotos_resolucion')->nullable()->after('archivo_path');
             }
             if (! Schema::hasColumn('tickets', 'token_resolucion')) {
-                $table->string('token_resolucion', 20)->nullable();
+                $table->string('token_resolucion', 25)->nullable();
             }
             if (! Schema::hasColumn('tickets', 'token_confirmacion')) {
-                $table->string('token_confirmacion', 20)->nullable();
+                $table->string('token_confirmacion', 25)->nullable();
             }
             if (! Schema::hasColumn('tickets', 'ip_resolucion')) {
                 $table->string('ip_resolucion', 45)->nullable();
