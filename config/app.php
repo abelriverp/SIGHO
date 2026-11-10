@@ -91,6 +91,15 @@ return [
     'hotel_ubicacion' => env('HOTEL_UBICACION', 'Hotel Emporio, Mazatlán, Sin.'),
 
     /*
+    | Respaldos (Fase 0, nov 2026) — ver App\Console\Commands\RespaldarSigho.
+    | BACKUP_PATH: carpeta extra (ej. una carpeta compartida en otra PC) donde copiar el ZIP.
+    | BACKUP_DIAS: cuantos respaldos conservar. MYSQLDUMP_PATH: ruta a mysqldump.
+    */
+    'backup_path'    => env('BACKUP_PATH'),
+    'backup_dias'    => (int) env('BACKUP_DIAS', 14),
+    'mysqldump_path' => env('MYSQLDUMP_PATH'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

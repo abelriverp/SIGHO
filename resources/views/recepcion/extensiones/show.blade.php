@@ -33,6 +33,7 @@
     </form>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 text-slate-600 border-b">
                 <tr>
@@ -61,6 +62,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 
     <div class="mt-4">{{ $items->links() }}</div>

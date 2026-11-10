@@ -103,6 +103,7 @@
             @if(empty($metricas['ticketsPorEstado']))
                 <div class="p-6 text-center text-sm text-gray-400">Sin tickets en el rango seleccionado.</div>
             @else
+                <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <tbody class="divide-y divide-gray-50">
                         @foreach($metricas['ticketsPorEstado'] as $estado => $total)
@@ -113,6 +114,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                </div>
             @endif
         </div>
 
@@ -125,6 +127,7 @@
             @if(empty($metricas['tiempoPorDepartamento']))
                 <div class="p-6 text-center text-sm text-gray-400">Sin tickets resueltos en el rango seleccionado.</div>
             @else
+                <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-xs text-gray-400 uppercase border-b border-gray-100">
@@ -143,6 +146,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                </div>
             @endif
         </div>
     </div>
@@ -188,6 +192,7 @@
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Ranking de Técnicos</h3>
                 <p class="text-[11px] text-gray-400 normal-case mt-0.5">Mismo criterio que "Tiempo por Departamento", pero solo cuenta tickets con técnico responsable registrado — por eso el total puede ser menor.</p>
             </div>
+            <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-xs text-gray-400 uppercase border-b border-gray-100">
@@ -206,6 +211,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     @endif
 

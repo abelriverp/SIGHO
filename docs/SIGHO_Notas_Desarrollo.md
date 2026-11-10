@@ -234,3 +234,21 @@ Módulo `herramientas_recepcion` (ruta base `recepcion.index`, orden 8 en `Modul
 - `EmailValidatorServiceTest` inyecta un resolver DNS falso en `setUp()`; antes fallaba sin salida a internet.
 - Se borraron del repo `app.zip` (copia vieja de `app/` de abril) y el archivo vacío `delete()`.
 - Verificado en sandbox con PHP 8.3 + SQLite: `migrate:fresh --seed`, `config:cache`, `sigho:crear-admin`, login, dashboard y ambos PDFs mostrando Cancún; 131/131 pruebas. **Falta correrlo contra MySQL en XAMPP.**
+
+## 16. Instalación real en Cancún y Fase 0 de higiene (2026-11-10)
+
+Contexto: Abel definió SIGHO **solo para Cancún por ahora**, base vacía al momento de reestructurar, y avance **fase por fase** (ver el documento "SIGHO — Análisis integral como herramienta de TI").
+
+Instalación en XAMPP (MySQL real), hallazgos:
+- `2026_06_29_000001_fix_token_columns_length_in_tickets` tronaba en instalación nueva (las columnas las crea `2026_07_06_000004`). Ahora solo modifica si existen, y `2026_07_06_000004` las crea ya con longitud 25.
+- Se retiró el módulo **Condominios / Check-in** (rutas, menú, seeder, controladores, modelos, policies, vistas) y la migración `2026_11_10_000001` borra `estancias`, `unidades`, `condominos` y el registro del módulo. Ningún otro módulo dependía de esos modelos.
+- `.htaccess` en la raíz del proyecto: el proyecto vive dentro de `htdocs`, así que todo excepto `public/` queda bloqueado (antes `.env` era visible en la red).
+- Correo: Google Workspace por `smtp.gmail.com:587` con contraseña de aplicación. Las notificaciones no usan cola (no hay `ShouldQueue`), no se necesita `queue:work`.
+
+Fase 0 (higiene):
+- `network_devices` y `peripherals` con `hotel_code` + `BelongsToHotel` (migración `2026_11_10_000002`). `NetworkController::updatePort()` valida que el dispositivo del puerto sea visible para la propiedad.
+- `PeripheralPolicy` (solo admin/gerente eliminan); `PeripheralController::destroy()` ya no borraba con verificación de rol.
+- Se borró el modelo `Item` y la tabla `items` (migración `2026_11_10_000003`), sin uso.
+- Comando `sigho:respaldar` (02:30 diario): mysqldump + `storage/app` en ZIP en `storage/app/respaldos`, copia opcional a `BACKUP_PATH`, conserva `BACKUP_DIAS` (14). Lee todo por `config('app.*')`, nunca `env()`. Requiere que la tarea programada de Windows corra `schedule:run` cada minuto.
+- Todas las tablas de vistas internas quedaron dentro de `overflow-x-auto` (pendiente de la sección 12).
+- Ya estaba resuelto por el parche de Cancún: nombre de hotel en `tickets/reportes_pdf`.

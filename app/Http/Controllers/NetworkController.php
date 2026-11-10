@@ -68,6 +68,9 @@ class NetworkController extends Controller
     public function updatePort(Request $request, $id)
     {
         $port = NetworkPort::findOrFail($id);
+        // El puerto no tiene hotel_code propio: se valida que su dispositivo
+        // sea visible para la propiedad del usuario (HotelScope).
+        NetworkDevice::findOrFail($port->network_device_id);
         
         // 🔒 Escudo de validación ante alteraciones del Request
         $validated = $request->validate([

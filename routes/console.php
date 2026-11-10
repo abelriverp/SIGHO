@@ -24,3 +24,7 @@ Schedule::command('tickets:escalar-sla')->hourly();
 // porque Schedule::monthlyOn() solo acepta UN día del mes, no dos.
 Schedule::command('tickets:resumen-pendientes')->cron('0 8 15,30 * *');
  
+// Fase 0 (nov 2026) — Respaldo diario de la base y de storage/app a las
+// 02:30 (ver App\Console\Commands\RespaldarSigho). Copia externa opcional
+// con BACKUP_PATH en el .env.
+Schedule::command('sigho:respaldar')->dailyAt('02:30');

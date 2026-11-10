@@ -18,6 +18,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
             <thead>
                 <tr class="hotel-blue text-white uppercase text-sm leading-normal">
@@ -110,6 +111,7 @@
                 @endif
             </tbody>
         </table>
+        </div>
     </div>
 
   {{-- 3. EL SCRIPT MÁGICO PARA EL BUSCADOR EN TIEMPO REAL (VERSIÓN PRECISA) --}}

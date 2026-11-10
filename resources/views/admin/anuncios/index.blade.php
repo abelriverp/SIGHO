@@ -59,6 +59,7 @@
     {{-- Historial --}}
     <h3 class="text-sm font-bold text-slate-700 mb-3">Historial de anuncios enviados</h3>
     <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 text-slate-600 border-b">
                 <tr>
@@ -86,6 +87,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 @endsection

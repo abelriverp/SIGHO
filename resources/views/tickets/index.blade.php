@@ -444,6 +444,7 @@
     {{-- ============================================================ --}}
     <h3 class="text-xl font-bold text-green-600 mb-4 border-b-2 border-green-200 pb-2">Histórico (Resueltos / Cerrados)</h3>
     <div class="bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 text-slate-700 font-bold uppercase text-[11px] tracking-wider">
                 <tr>
@@ -513,6 +514,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 
 </div>

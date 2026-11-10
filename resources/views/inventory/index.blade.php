@@ -75,6 +75,7 @@
 
     {{-- Tabla --}}
     <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
             <thead>
                 <tr class="bg-[#041b32] text-white uppercase text-xs">
@@ -190,6 +191,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 
     {{-- Paginación --}}

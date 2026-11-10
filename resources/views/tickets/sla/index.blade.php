@@ -21,6 +21,7 @@
         <div class="px-6 py-3 border-b bg-slate-50">
             <h3 class="font-bold text-slate-700 text-sm">Vista general (valores que aplican hoy)</h3>
         </div>
+        <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 text-slate-600 border-b">
                 <tr>
@@ -47,6 +48,7 @@
                 @endif
             </tbody>
         </table>
+        </div>
     </div>
 
     {{-- Overrides configurados explícitamente para esta propiedad --}}
@@ -54,6 +56,7 @@
         <div class="px-6 py-3 border-b bg-slate-50">
             <h3 class="font-bold text-slate-700 text-sm">Políticas configuradas ({{ $hotelActivo }})</h3>
         </div>
+        <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 text-slate-600 border-b">
                 <tr>
@@ -92,6 +95,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 @endsection

@@ -61,7 +61,13 @@ class PeripheralController extends Controller
 
     public function destroy($id)
     {
-        Peripheral::findOrFail($id)->delete();
+        $peripheral = Peripheral::findOrFail($id);
+
+        if (! auth()->user()->can('delete', $peripheral)) {
+            abort(403, 'Solo un Administrador o Gerente puede eliminar periféricos.');
+        }
+
+        $peripheral->delete();
         return redirect()->route('peripherals.index');
     }
 }
