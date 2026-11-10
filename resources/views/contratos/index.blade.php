@@ -8,7 +8,7 @@
 <div class="max-w-7xl mx-auto">
     <div class="flex flex-wrap justify-between items-end gap-4 mb-6">
         <div>
-            <h2 class="text-2xl font-bold text-slate-800">Contratos</h2>
+            <h2 class="text-2xl font-bold text-slate-800">{{ $tipo ? ($tipos[$tipo] ?? 'Contratos') : 'Contratos' }}</h2>
             <p class="text-gray-500 text-sm mt-1">Soporte, mantenimiento, enlaces, arrendamientos y pólizas · Gasto anual estimado (activos, MXN): <strong>${{ number_format($costoAnual, 2) }}</strong></p>
         </div>
         @if(auth()->user()->puedeResponderTickets() || auth()->user()->puedeVerTodos())
@@ -31,7 +31,7 @@
                 @forelse($contratos as $c)
                     @php $e = $c->estadoVigencia(); @endphp
                     <tr class="border-b border-gray-100 hover:bg-gray-50 {{ $c->activo ? '' : 'opacity-50' }}">
-                        <td class="py-3 px-4"><a href="{{ route('contratos.show', $c) }}" class="font-bold text-[#041b32] hover:underline">{{ $c->nombre }}</a><div class="text-xs text-slate-400">{{ $c->numero }}</div></td>
+                        <td class="py-3 px-4"><a href="{{ route('contratos.show', $c) }}" class="font-bold text-[#041b32] hover:underline">{{ $c->nombre }}</a><div class="text-xs text-slate-400">{{ $c->numero }}{{ $c->ancho_banda ? ' · '.$c->ancho_banda : '' }}</div></td>
                         <td class="py-3 px-4 text-xs">{{ $tipos[$c->tipo] ?? $c->tipo }}</td>
                         <td class="py-3 px-4 text-xs">{{ $c->proveedor?->nombre }}</td>
                         <td class="py-3 px-4 text-right text-xs whitespace-nowrap">{{ $c->costo !== null ? '$'.number_format($c->costo, 2).' '.$c->moneda : '' }}<div class="text-slate-400">{{ $c->periodicidad_pago }}</div></td>

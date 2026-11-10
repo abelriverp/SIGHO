@@ -16,6 +16,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Fase 4: ping del sistema; las pruebas lo reemplazan con uno falso.
+        $this->app->bind(\App\Services\Monitoreo\Pinger::class, \App\Services\Monitoreo\PingSistema::class);
         //
     }
 

@@ -21,6 +21,8 @@ class ContratoController extends Controller
         return [
             'nombre'                => 'required|string|max:200',
             'tipo'                  => ['required', Rule::in(array_keys(Contrato::TIPOS))],
+            'ancho_banda'           => 'nullable|string|max:50',
+            'ip_publica'            => 'nullable|string|max:100',
             'proveedor_id'          => 'nullable|integer',
             'numero'                => 'nullable|string|max:100',
             'fecha_inicio'          => 'nullable|date',
@@ -72,7 +74,9 @@ class ContratoController extends Controller
     public function index(Request $request)
     {
         $filtro = $request->query('vigencia');
+        $tipo = array_key_exists((string) $request->query('tipo'), Contrato::TIPOS) ? $request->query('tipo') : null;
         $contratos = Contrato::with('proveedor:id,nombre')->withCount('activos')
+            ->when($tipo, fn ($q) => $q->where('tipo', $tipo))
             ->when($filtro === 'por_vencer', fn ($q) => $q->whereNotNull('fecha_fin')->whereDate('fecha_fin', '>=', now()->toDateString())->whereDate('fecha_fin', '<=', now()->addDays(90)->toDateString()))
             ->when($filtro === 'vencidos', fn ($q) => $q->whereDate('fecha_fin', '<', now()->toDateString()))
             ->orderByDesc('activo')->orderByRaw('fecha_fin IS NULL')->orderBy('fecha_fin')->get();
@@ -86,7 +90,7 @@ class ContratoController extends Controller
             };
         });
 
-        return view('contratos.index', ['contratos' => $contratos, 'filtro' => $filtro, 'tipos' => Contrato::TIPOS, 'costoAnual' => $costoAnual]);
+        return view('contratos.index', ['contratos' => $contratos, 'filtro' => $filtro, 'tipo' => $tipo, 'tipos' => Contrato::TIPOS, 'costoAnual' => $costoAnual]);
     }
 
     public function create()

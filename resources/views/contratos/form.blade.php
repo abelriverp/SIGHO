@@ -41,6 +41,10 @@
             <div><label class="{{ $lbl }}">Moneda</label><select name="moneda" class="{{ $in }}">@foreach(['MXN','USD'] as $m)<option @selected(old('moneda', $contrato->moneda) === $m)>{{ $m }}</option>@endforeach</select></div>
             <div><label class="{{ $lbl }}">Pago</label><select name="periodicidad_pago" class="{{ $in }}"><option value="">—</option>@foreach($periodos as $k => $v)<option value="{{ $k }}" @selected(old('periodicidad_pago', $contrato->periodicidad_pago) === $k)>{{ $v }}</option>@endforeach</select></div>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div><label class="{{ $lbl }}">Ancho de banda (enlaces)</label><input name="ancho_banda" value="{{ old('ancho_banda', $contrato->ancho_banda) }}" class="{{ $in }}" placeholder="200 Mbps simétrico"></div>
+            <div><label class="{{ $lbl }}">IP pública / bloque (enlaces)</label><input name="ip_publica" value="{{ old('ip_publica', $contrato->ip_publica) }}" class="{{ $in }} font-mono" placeholder="201.x.x.x/29"></div>
+        </div>
         <div><label class="{{ $lbl }}">Contacto de soporte / cómo levantar reporte</label><input name="contacto_soporte" value="{{ old('contacto_soporte', $contrato->contacto_soporte) }}" class="{{ $in }}" placeholder="Ej: 800 123 4567 opción 2, cuenta 98765"></div>
         <div><label class="{{ $lbl }}">SLA contratado</label><textarea name="sla" rows="2" class="{{ $in }}" placeholder="Ej: respuesta 4 h, solución 24 h, disponibilidad 99.5%">{{ old('sla', $contrato->sla) }}</textarea></div>
         <div>

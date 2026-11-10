@@ -64,6 +64,7 @@ class AssetController extends Controller
             'parent_id'         => 'nullable|integer|exists:assets,id',
             'ip_address'        => 'nullable|ip',
             'mac_address'       => ['nullable', 'regex:/^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/'],
+            'monitorear'        => 'nullable|boolean',
             'marca'             => 'nullable|string|max:255',
             'modelo'            => 'nullable|string|max:255',
             'numero_serie'      => 'nullable|string|max:255',
@@ -106,6 +107,11 @@ class AssetController extends Controller
             if (! $usuario || ($usuario->hotel_code !== auth()->user()->hotel_code && ! auth()->user()->isAdmin())) {
                 $errores['asignado_a'] = 'Usuario no válido.';
             }
+        }
+        // Fase 4: monitoreo por ping requiere IP.
+        $data['monitorear'] = $request->boolean('monitorear');
+        if ($data['monitorear'] && empty($data['ip_address'])) {
+            $errores['monitorear'] = 'Para monitorear el equipo captura su dirección IP.';
         }
         if ($errores) {
             throw ValidationException::withMessages($errores);
@@ -236,7 +242,7 @@ class AssetController extends Controller
     public function show($id)
     {
         $asset = Asset::with(['ubicacion', 'asignado', 'padre', 'componentes.ubicacion', 'revisions' => fn ($q) => $q->latest(),
-                'proveedorCatalogo', 'contratos.proveedor', 'licencias', 'bajas' => fn ($q) => $q->latest()->with(['solicitante:id,name', 'revisor:id,name'])])
+                'proveedorCatalogo', 'contratos.proveedor', 'licencias', 'puertos.device', 'bajas' => fn ($q) => $q->latest()->with(['solicitante:id,name', 'revisor:id,name'])])
             ->findOrFail($id);
 
         // Fase 2: tickets ligados a este activo (y a sus periféricos).

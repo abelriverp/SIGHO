@@ -138,7 +138,7 @@
                         {{-- 3. RED --}}
                         @if($user->tieneModulo('red_infraestructura'))
                         <div class="relative group">
-                            <a href="{{ route('network.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('network.*') ? 'nav-pill-active' : '' }}">
+                            <a href="{{ route('network.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('network.*', 'segmentos.*', 'monitoreo.*') ? 'nav-pill-active' : '' }}">
                                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                     <rect x="4" y="14" width="3" height="6"></rect>
                                     <rect x="10.5" y="10" width="3" height="10"></rect>
@@ -150,6 +150,11 @@
                             <div class="absolute left-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
                                 <a href="{{ route('network.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Equipos</a>
                                 <a href="{{ route('network.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nuevo Equipo</a>
+                                <a href="{{ route('monitoreo.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📡 Monitoreo</a>
+                                <a href="{{ route('segmentos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Segmentos / VLANs</a>
+                                @if($user->tieneModulo('seguimiento_equipos_ti'))
+                                    <a href="{{ route('contratos.index', ['tipo' => 'enlace']) }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Enlaces de internet</a>
+                                @endif
                             </div>
                         </div>
                         @endif
@@ -384,6 +389,8 @@
                         Red
                     </a>
                     <a href="{{ route('network.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">+ Nuevo Equipo</a>
+                    <a href="{{ route('monitoreo.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📡 Monitoreo</a>
+                    <a href="{{ route('segmentos.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Segmentos / VLANs</a>
                 </div>
                 @endif
 

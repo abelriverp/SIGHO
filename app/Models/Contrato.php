@@ -23,7 +23,7 @@ class Contrato extends Model
     public const PERIODICIDAD = ['mensual' => 'Mensual', 'trimestral' => 'Trimestral', 'anual' => 'Anual', 'unico' => 'Pago único'];
 
     protected $fillable = [
-        'hotel_code', 'proveedor_id', 'nombre', 'tipo', 'numero', 'fecha_inicio', 'fecha_fin',
+        'hotel_code', 'proveedor_id', 'nombre', 'tipo', 'ancho_banda', 'ip_publica', 'numero', 'fecha_inicio', 'fecha_fin',
         'costo', 'moneda', 'periodicidad_pago', 'renovacion_automatica', 'dias_aviso', 'sla',
         'contacto_soporte', 'notas', 'documento_path', 'activo',
     ];

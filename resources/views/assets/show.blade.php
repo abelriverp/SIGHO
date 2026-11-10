@@ -94,6 +94,24 @@
                         <span class="text-sm text-slate-400">Sin ubicación</span>
                     @endif
                 </div>
+                @if ($asset->monitorear)
+                    <div>
+                        <span class="block text-xs text-gray-400 uppercase font-bold">Monitoreo</span>
+                        @if ($asset->estado_monitoreo === 'caido')
+                            <span class="text-sm font-bold text-red-700">CAÍDO desde {{ $asset->caido_desde?->format('d/m/Y H:i') }}</span>
+                        @elseif ($asset->estado_monitoreo === 'activo')
+                            <span class="text-sm font-bold text-green-700">En línea · {{ $asset->latencia_ms }} ms</span> <span class="text-xs text-slate-500">{{ $asset->ultimo_ping_at?->diffForHumans() }}</span>
+                        @else
+                            <span class="text-sm text-slate-500">Esperando primer ping</span>
+                        @endif
+                    </div>
+                @endif
+                @foreach ($asset->puertos as $pt)
+                    <div>
+                        <span class="block text-xs text-gray-400 uppercase font-bold">Conectado en</span>
+                        <a href="{{ route('network.show', $pt->network_device_id) }}" class="text-sm text-blue-800 hover:underline">{{ $pt->device?->nombre }} · puerto {{ $pt->port_number }}</a>{{ $pt->vlan ? ' · VLAN '.$pt->vlan : '' }}
+                    </div>
+                @endforeach
                 <div>
                     <span class="block text-xs text-gray-400 uppercase font-bold">Resguardo</span>
                     <span class="text-sm text-slate-700">{{ $asset->asignado?->name ?? $asset->encargado ?? '—' }}</span>

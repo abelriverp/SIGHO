@@ -138,6 +138,12 @@
             <input type="text" name="mac_address" value="{{ $v('mac_address') }}" class="{{ $in }} font-mono" placeholder="AA:BB:CC:DD:EE:FF">
         </div>
     </div>
+    <label class="flex items-center gap-2">
+        <input type="hidden" name="monitorear" value="0">
+        <input type="checkbox" name="monitorear" value="1" @checked(old('monitorear', $asset->monitorear)) class="rounded">
+        <span class="text-sm font-bold text-slate-700">Monitorear por ping</span>
+        <span class="text-xs text-slate-500">(cada 5 min; si deja de responder se abre un ticket solo)</span>
+    </label>
 
     <template x-if="categoria === 'Cómputo' || categoria === 'Punto de venta'">
         <div class="space-y-6">

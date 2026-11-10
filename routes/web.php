@@ -11,7 +11,8 @@ use App\Http\Controllers\{
     OperadorController, RecepcionController, EmailValidacionController,
     ExtensionDeteccionController, PerfilCorreoValidacionController,
     ConocimientoController, RespuestaPredefinidaController, TicketRecurrenteController,
-    ProveedorController, ContratoController, LicenciaController, VencimientoController, BajaActivoController
+    ProveedorController, ContratoController, LicenciaController, VencimientoController, BajaActivoController,
+    SegmentoRedController, MonitoreoController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -146,6 +147,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['modulo:red_infraestructura'])->group(function () {
         Route::resource('network', NetworkController::class);
         Route::post('/network/port/{id}', [NetworkController::class, 'updatePort'])->name('network.port.update');
+
+        // Fase 4 (nov 2026): segmentos/VLANs con mapa de IPs y monitoreo por ping.
+        Route::resource('segmentos', SegmentoRedController::class)->parameters(['segmentos' => 'segmento']);
+        Route::get('/monitoreo', [MonitoreoController::class, 'index'])->name('monitoreo.index');
+        Route::post('/monitoreo/activar', [MonitoreoController::class, 'activar'])->name('monitoreo.activar');
     });
 
     // Catálogo de categorías de tickets (Tipo de solicitud -> Sistema ->

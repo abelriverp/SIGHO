@@ -36,3 +36,8 @@ Schedule::command('tickets:generar-recurrentes')->dailyAt('06:00');
 // Fase 3 (nov 2026) — Avisos de contratos, licencias y garantías por vencer
 // (solo en los días de aviso; ver App\Console\Commands\AlertasVencimiento).
 Schedule::command('sigho:alertas-vencimiento')->dailyAt('07:00');
+
+// Fase 4 (nov 2026) — Monitoreo por ping de los activos marcados
+// "monitorear"; abre un ticket tras 3 fallas seguidas (ver
+// App\Console\Commands\MonitorearEquipos).
+Schedule::command('sigho:monitorear')->everyFiveMinutes()->withoutOverlapping(10);

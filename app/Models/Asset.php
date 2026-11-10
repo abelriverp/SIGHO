@@ -63,6 +63,8 @@ class Asset extends Model
         'garantia_hasta', 'procesador', 'ram', 'tipo_ram', 'almacenamiento',
         'sistema_operativo', 'paqueteria_office', 'especificaciones',
         'fecha_baja', 'motivo_baja',
+        'monitorear', 'estado_monitoreo', 'ultimo_ping_at', 'latencia_ms',
+        'fallas_consecutivas', 'caido_desde', 'ticket_monitoreo_id',
     ];
 
     protected function casts(): array
@@ -73,6 +75,9 @@ class Asset extends Model
             'fecha_baja'        => 'date',
             'costo'             => 'decimal:2',
             'especificaciones'  => 'array',
+            'monitorear'        => 'boolean',
+            'ultimo_ping_at'    => 'datetime',
+            'caido_desde'       => 'datetime',
         ];
     }
 
@@ -108,6 +113,17 @@ class Asset extends Model
     public function bajas()
     {
         return $this->hasMany(BajaActivo::class);
+    }
+
+    public function eventosMonitoreo()
+    {
+        return $this->hasMany(MonitoreoEvento::class);
+    }
+
+    /** Puerto de switch donde está conectado este activo. */
+    public function puertos()
+    {
+        return $this->hasMany(NetworkPort::class);
     }
 
     public function tickets()

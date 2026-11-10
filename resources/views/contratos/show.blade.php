@@ -24,6 +24,9 @@
         <div class="bg-white rounded-lg border border-slate-200 p-4"><p class="text-xs font-bold text-slate-400 uppercase">Documento</p>@if($contrato->documento_path)<a href="{{ Storage::url($contrato->documento_path) }}" target="_blank" class="text-sm font-bold text-blue-700 underline">Ver PDF</a>@else<p class="text-sm text-slate-400 mt-1">Sin archivo</p>@endif</div>
     </div>
 
+    @if($contrato->ancho_banda || $contrato->ip_publica)
+        <div class="bg-white rounded-lg border border-slate-200 p-4 mb-6 text-sm"><span class="text-xs font-bold text-slate-400 uppercase">Enlace:</span> {{ $contrato->ancho_banda }} <span class="font-mono">{{ $contrato->ip_publica }}</span></div>
+    @endif
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div class="bg-white rounded-lg border border-slate-200 p-4"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Soporte</p><p class="text-sm text-slate-700 whitespace-pre-line">{{ $contrato->contacto_soporte ?: ($contrato->proveedor?->soporte ?: '—') }}</p></div>
         <div class="bg-white rounded-lg border border-slate-200 p-4"><p class="text-xs font-bold text-slate-400 uppercase mb-1">SLA contratado</p><p class="text-sm text-slate-700 whitespace-pre-line">{{ $contrato->sla ?: '—' }}</p></div>
