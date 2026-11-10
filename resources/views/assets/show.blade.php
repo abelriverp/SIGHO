@@ -25,6 +25,12 @@
         <div class="flex flex-wrap gap-2 items-center">
             <span class="py-1 px-3 rounded-full text-sm font-bold {{ $badgeEstado[$asset->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $asset->status }}</span>
             <a href="{{ route('assets.edit', $asset->id) }}" class="bg-[#041b32] text-white text-sm font-bold py-2 px-4 rounded shadow">Editar</a>
+            @if($asset->asignado || $asset->encargado)
+                <a href="{{ route('assets.responsiva', $asset->id) }}" class="border border-slate-300 text-slate-700 text-sm font-bold py-2 px-4 rounded">Carta responsiva</a>
+                @if($asset->asignado)
+                    <a href="{{ route('assets.responsiva', ['id' => $asset->id, 'todos' => 1]) }}" class="border border-slate-300 text-slate-700 text-sm font-bold py-2 px-4 rounded" title="Todos los equipos bajo resguardo de {{ $asset->asignado->name }}">Responsiva de todo su equipo</a>
+                @endif
+            @endif
             @can('delete', $asset)
                 <form action="{{ route('assets.destroy', $asset->id) }}" method="POST" onsubmit="return confirm('¿Eliminar {{ $asset->nomenclatura }}? Para equipos dados de baja es mejor cambiar el estado a Baja y conservar el historial.');">
                     @csrf @method('DELETE')
@@ -118,6 +124,9 @@
                         <span class="text-sm text-slate-400">Sin dato</span>
                     @endif
                 </div>
+                @if ($asset->proveedorCatalogo)
+                    <div><span class="block text-xs text-gray-400 uppercase font-bold">Proveedor (catálogo)</span><a href="{{ route('proveedores.index', ['q' => $asset->proveedorCatalogo->nombre]) }}" class="text-sm text-blue-800 hover:underline">{{ $asset->proveedorCatalogo->nombre }}</a>@if($asset->proveedorCatalogo->soporte)<span class="block text-xs text-slate-500">Soporte: {{ $asset->proveedorCatalogo->soporte }}</span>@endif</div>
+                @endif
                 @if ($asset->status === 'Baja')
                     <div class="bg-red-50 border border-red-100 rounded p-3">
                         <span class="block text-xs text-red-700 uppercase font-bold">Baja {{ $asset->fecha_baja?->format('d/m/Y') }}</span>
@@ -125,6 +134,49 @@
                     </div>
                 @endif
             </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 space-y-3">
+                <h3 class="font-bold text-slate-700">Contratos y licencias</h3>
+                @forelse ($asset->contratos as $c)
+                    @php $ev = $c->estadoVigencia(); @endphp
+                    <a href="{{ route('contratos.show', $c) }}" class="block text-sm hover:underline {{ $ev === 'vencido' ? 'text-red-700' : 'text-blue-800' }}">📄 {{ $c->nombre }} <span class="text-xs text-slate-500">{{ $c->proveedor?->nombre }} · {{ $c->fecha_fin ? 'vence '.$c->fecha_fin->format('d/m/Y') : 'sin fecha' }}</span></a>
+                @empty
+                    <p class="text-xs text-slate-400">Sin contrato de soporte.</p>
+                @endforelse
+                @foreach ($asset->licencias as $l)
+                    <a href="{{ route('licencias.edit', $l) }}" class="block text-sm text-blue-800 hover:underline">🔑 {{ $l->software }} {{ $l->edicion }}</a>
+                @endforeach
+            </div>
+
+            @php $bajaPendiente = $asset->bajas->firstWhere('estado', 'pendiente'); @endphp
+            @if ($asset->status !== 'Baja' && (auth()->user()->puedeResponderTickets() || auth()->user()->puedeVerTodos()))
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                    @if ($bajaPendiente)
+                        <h3 class="font-bold text-orange-700">Baja solicitada</h3>
+                        <p class="text-xs text-slate-600 mt-1">Por {{ $bajaPendiente->solicitante?->name }} el {{ $bajaPendiente->created_at->format('d/m/Y') }}. <a href="{{ route('bajas.index') }}" class="underline">Ver solicitudes</a></p>
+                    @else
+                        <details>
+                            <summary class="font-bold text-red-700 cursor-pointer text-sm">Solicitar baja de este activo</summary>
+                            <form method="POST" action="{{ route('bajas.store', $asset->id) }}" enctype="multipart/form-data" class="mt-3 space-y-2">
+                                @csrf
+                                <textarea name="motivo" rows="3" required minlength="10" class="w-full border border-slate-300 rounded text-sm p-2" placeholder="Motivo: falla, dictamen del proveedor, obsolescencia…">{{ old('motivo') }}</textarea>
+                                <select name="destino" class="w-full border border-slate-300 rounded text-sm p-2">
+                                    <option value="">Destino final (opcional)</option>
+                                    @foreach (\App\Models\BajaActivo::DESTINOS as $k => $d)<option value="{{ $k }}">{{ $d }}</option>@endforeach
+                                </select>
+                                <label class="block text-xs text-slate-500">Dictamen técnico (PDF o foto, opcional)</label>
+                                <input type="file" name="dictamen" accept=".pdf,image/*" class="block w-full text-xs">
+                                @error('motivo')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                                <button class="w-full border border-red-300 text-red-700 font-bold py-2 rounded text-sm">Enviar solicitud</button>
+                            </form>
+                        </details>
+                    @endif
+                </div>
+            @endif
+            @php $bajaAprobada = $asset->bajas->firstWhere('estado', 'aprobada'); @endphp
+            @if ($bajaAprobada)
+                <a href="{{ route('bajas.acta', $bajaAprobada) }}" class="block bg-red-50 border border-red-100 p-3 rounded-lg text-sm font-bold text-red-800">Descargar acta de baja</a>
+            @endif
 
             @if ($asset->imagen_path)
                 <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-100">

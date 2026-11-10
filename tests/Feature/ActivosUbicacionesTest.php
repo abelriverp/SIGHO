@@ -118,7 +118,8 @@ class ActivosUbicacionesTest extends TestCase
 
     public function test_dar_de_baja_registra_fecha_y_motivo(): void
     {
-        $this->actingAs($this->usuario());
+        // Fase 3: la baja directa queda solo para gerente/admin.
+        $this->actingAs($this->usuario('gerente'));
         $tv = Asset::create(['nomenclatura' => 'TV-1205', 'nombre' => 'TV', 'categoria' => 'TV y entretenimiento', 'area' => 'x']);
 
         $this->put(route('assets.update', $tv->id), [

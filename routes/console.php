@@ -32,3 +32,7 @@ Schedule::command('sigho:respaldar')->dailyAt('02:30');
 // Fase 2 (nov 2026) — Mantenimiento preventivo: genera a las 06:00 los
 // tickets recurrentes que tocan hoy (ver App\Console\Commands\GenerarTicketsRecurrentes).
 Schedule::command('tickets:generar-recurrentes')->dailyAt('06:00');
+
+// Fase 3 (nov 2026) — Avisos de contratos, licencias y garantías por vencer
+// (solo en los días de aviso; ver App\Console\Commands\AlertasVencimiento).
+Schedule::command('sigho:alertas-vencimiento')->dailyAt('07:00');

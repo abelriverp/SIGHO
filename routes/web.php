@@ -10,7 +10,8 @@ use App\Http\Controllers\{
     GuestPortalController, PuntoQrController, AnuncioController,
     OperadorController, RecepcionController, EmailValidacionController,
     ExtensionDeteccionController, PerfilCorreoValidacionController,
-    ConocimientoController, RespuestaPredefinidaController, TicketRecurrenteController
+    ConocimientoController, RespuestaPredefinidaController, TicketRecurrenteController,
+    ProveedorController, ContratoController, LicenciaController, VencimientoController, BajaActivoController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -78,6 +79,24 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/ubicaciones/generar-habitaciones', [UbicacionController::class, 'generarHabitaciones'])->name('ubicaciones.generar');
         Route::resource('ubicaciones', UbicacionController::class)->parameters(['ubicaciones' => 'ubicacion']);
+
+        // Fase 3 (nov 2026): proveedores, contratos, licencias, vencimientos,
+        // cartas responsivas y bajas con aprobación.
+        Route::get('/assets/{id}/responsiva', [AssetController::class, 'responsiva'])->name('assets.responsiva');
+        Route::post('/assets/{id}/baja', [BajaActivoController::class, 'store'])->name('bajas.store');
+        Route::get('/bajas', [BajaActivoController::class, 'index'])->name('bajas.index');
+        Route::post('/bajas/{baja}/aprobar', [BajaActivoController::class, 'aprobar'])->name('bajas.aprobar');
+        Route::post('/bajas/{baja}/rechazar', [BajaActivoController::class, 'rechazar'])->name('bajas.rechazar');
+        Route::get('/bajas/{baja}/acta', [BajaActivoController::class, 'acta'])->name('bajas.acta');
+
+        Route::get('/proveedores', [ProveedorController::class, 'index'])->name('proveedores.index');
+        Route::post('/proveedores', [ProveedorController::class, 'store'])->name('proveedores.store');
+        Route::put('/proveedores/{proveedor}', [ProveedorController::class, 'update'])->name('proveedores.update');
+        Route::delete('/proveedores/{proveedor}', [ProveedorController::class, 'destroy'])->name('proveedores.destroy');
+
+        Route::resource('contratos', ContratoController::class);
+        Route::resource('licencias', LicenciaController::class)->except(['show']);
+        Route::get('/vencimientos', [VencimientoController::class, 'index'])->name('vencimientos.index');
     });
 
     Route::middleware(['modulo:inventario_suministros'])->group(function () {

@@ -88,7 +88,7 @@
                         {{-- 1. ACTIVOS Y UBICACIONES (Fase 1) --}}
                         @if($user->tieneModulo('seguimiento_equipos_ti'))
                         <div class="relative group">
-                            <a href="{{ route('assets.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('assets.*') || request()->routeIs('ubicaciones.*') || request()->routeIs('revisions.*') ? 'nav-pill-active' : '' }}">
+                            <a href="{{ route('assets.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('assets.*', 'ubicaciones.*', 'revisions.*', 'contratos.*', 'licencias.*', 'proveedores.*', 'vencimientos.*', 'bajas.*') ? 'nav-pill-active' : '' }}">
                                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                     <rect x="3" y="4" width="18" height="12" rx="1"></rect>
                                     <line x1="8" y1="20" x2="16" y2="20"></line>
@@ -101,6 +101,11 @@
                                 <a href="{{ route('assets.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver activos</a>
                                 <a href="{{ route('assets.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nuevo activo</a>
                                 <a href="{{ route('ubicaciones.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Ubicaciones y habitaciones</a>
+                                <a href="{{ route('vencimientos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">⏰ Vencimientos</a>
+                                <a href="{{ route('contratos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Contratos</a>
+                                <a href="{{ route('licencias.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Licencias</a>
+                                <a href="{{ route('proveedores.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Proveedores</a>
+                                <a href="{{ route('bajas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Bajas de equipo</a>
                             </div>
                         </div>
                         @endif
@@ -350,6 +355,11 @@
                     </a>
                     <a href="{{ route('assets.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">+ Nuevo activo</a>
                     <a href="{{ route('ubicaciones.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Ubicaciones y habitaciones</a>
+                    <a href="{{ route('vencimientos.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">⏰ Vencimientos</a>
+                    <a href="{{ route('contratos.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Contratos</a>
+                    <a href="{{ route('licencias.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Licencias</a>
+                    <a href="{{ route('proveedores.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Proveedores</a>
+                    <a href="{{ route('bajas.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Bajas de equipo</a>
                 </div>
                 @endif
 

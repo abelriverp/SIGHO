@@ -177,7 +177,13 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
             <label class="{{ $lbl }}">Proveedor</label>
-            <input type="text" name="proveedor" value="{{ $v('proveedor') }}" class="{{ $in }}">
+            <select name="proveedor_id" class="{{ $in }}">
+                <option value="">— Elegir del catálogo —</option>
+                @foreach ($proveedores as $p)
+                    <option value="{{ $p->id }}" @selected((string) $v('proveedor_id') === (string) $p->id)>{{ $p->nombre }}</option>
+                @endforeach
+            </select>
+            <input type="text" name="proveedor" value="{{ $v('proveedor') }}" class="{{ $in }} mt-2" placeholder="…o escríbelo si no está en el catálogo">
         </div>
         <div>
             <label class="{{ $lbl }}">Factura</label>

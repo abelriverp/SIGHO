@@ -284,3 +284,16 @@ Decisión de Abel: solo Cancún, base vacía (no se migran datos), avance fase p
 - **Reportes**: `metricasPeriodo()` agrega `calidad` (CSAT promedio de encuestas del rango, % de resueltos reabiertos alguna vez, % resueltos sin reasignar) y `topActivos` / `topUbicaciones` (10 con más tickets levantados en el rango). Falta llevarlos al PDF de reportes (Fase 5).
 - Ojo en pruebas: `hotel_code` **no** es fillable en `Asset` (lo pone `BelongsToHotel`); para crear un activo de otra propiedad usar `forceFill`.
 - Tests: `tests/Feature/HelpdeskLigadoTest.php` (12 casos). Suite: 154 pruebas en SQLite.
+
+## 19. Fase 3: proveedores, contratos, licencias, vencimientos, responsivas y bajas (2026-11-10)
+
+Todo vive dentro del módulo `seguimiento_equipos_ti` (menú Activos). Permisos (`Concerns\PermisosActivos`): todos los que tienen el módulo consultan; técnico, gerente y admin capturan; solo gerente y admin eliminan y aprueban o rechazan bajas.
+
+- **Proveedores** (`proveedores`, único por propiedad): contacto comercial y de soporte. `assets.proveedor_id` (FK) se agrega sin quitar el texto libre `assets.proveedor` (importaciones CSV y proveedores fuera de catálogo).
+- **Contratos** (`contratos` + pivote `asset_contrato`): tipo, vigencia, `dias_aviso`, renovación automática, costo y moneda con periodicidad, SLA contratado, contacto de soporte y PDF firmado (`storage/app/public/contratos`). El gasto anual estimado solo suma contratos activos en MXN (mensual × 12, trimestral × 4).
+- **Licencias** (`licencias` + pivote `asset_licencia`): compradas contra instaladas; la lista marca en rojo cuando hay más instalaciones que licencias. **Nunca guardar claves de producto**: `referencia` es folio o cuenta.
+- **Vencimientos** (`VencimientosService`, `/vencimientos`): contratos activos, licencias y garantías de activos vigentes. Comando `sigho:alertas-vencimiento` (diario 07:00) manda un correo por propiedad a sus gerentes y a todos los admins (`VencimientosProximosNotification`), **solo** cuando algo está a 30, 15, 7, 1 o 0 días, o exactamente a `dias_aviso` del contrato, para no mandar un correo diario. `--todos` manda todo lo de los próximos 30 días (para probar).
+- **Carta responsiva** (`assets.responsiva`, DomPDF, `assets/responsiva_pdf.blade.php`): un activo y sus periféricos ligados, o con `?todos=1` todos los activos vigentes bajo resguardo del mismo usuario. Exige resguardo (`asignado_a`) o `encargado`. Queda en bitácora.
+- **Bajas** (`bajas_activos`, `BajaActivoController`): técnico solicita con motivo (mín. 10), destino y dictamen opcional (PDF o imagen) → gerente o admin aprueba (activo pasa a `Baja`, guarda fecha, motivo y estado anterior, y quita el resguardo) o rechaza con comentario obligatorio. Una sola solicitud pendiente por activo. El acta (`bajas/acta_pdf.blade.php`) solo existe para bajas aprobadas, con firmas Solicita, Autoriza y Contraloría. Los periféricos ligados **no** se dan de baja en automático.
+- Cambio en `AssetController::validateAsset()`: un no supervisor ya no puede poner `status = Baja` desde Editar; se le manda al flujo de solicitud. La prueba de Fase 1 de baja directa ahora usa un gerente.
+- Tests: `tests/Feature/ContratosLicenciasBajasTest.php` (9 casos). Suite: 163 pruebas en SQLite.

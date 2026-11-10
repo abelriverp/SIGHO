@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\AuditLog;
 use App\Models\Ubicacion;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -73,6 +74,7 @@ class AssetController extends Controller
             'sistema_operativo' => 'nullable|string|max:100',
             'paqueteria_office' => 'nullable|string|max:100',
             'proveedor'         => 'nullable|string|max:150',
+            'proveedor_id'      => 'nullable|integer',
             'factura'           => 'nullable|string|max:100',
             'costo'             => 'nullable|numeric|min:0|max:9999999999',
             'fecha_adquisicion' => 'nullable|date',
@@ -119,6 +121,15 @@ class AssetController extends Controller
             ! empty($data['ubicacion_id']) ? Ubicacion::find($data['ubicacion_id'])?->etiqueta : 'Sin asignar'
         );
 
+        // Fase 3: solo gerente/admin dan de baja directo; los demás usan
+        // el flujo de solicitud (BajaActivoController) con aprobación.
+        if ($data['status'] === 'Baja' && $asset?->status !== 'Baja' && ! auth()->user()->puedeVerTodos()) {
+            throw ValidationException::withMessages(['status' => 'Para dar de baja un activo usa "Solicitar baja" en su ficha; la aprueba un gerente o administrador.']);
+        }
+        if (! empty($data['proveedor_id']) && ! \App\Models\Proveedor::whereKey($data['proveedor_id'])->exists()) {
+            throw ValidationException::withMessages(['proveedor_id' => 'Proveedor no válido.']);
+        }
+
         if ($data['status'] === 'Baja') {
             $data['fecha_baja'] = $data['fecha_baja'] ?? now()->toDateString();
         } else {
@@ -142,6 +153,7 @@ class AssetController extends Controller
             'categorias'  => Asset::CATEGORIAS,
             'estados'     => Asset::ESTADOS,
             'tipos'       => Asset::TIPOS_SUGERIDOS,
+            'proveedores' => \App\Models\Proveedor::where('activo', true)->orderBy('nombre')->get(['id', 'nombre']),
         ];
     }
 
@@ -223,7 +235,8 @@ class AssetController extends Controller
 
     public function show($id)
     {
-        $asset = Asset::with(['ubicacion', 'asignado', 'padre', 'componentes.ubicacion', 'revisions' => fn ($q) => $q->latest()])
+        $asset = Asset::with(['ubicacion', 'asignado', 'padre', 'componentes.ubicacion', 'revisions' => fn ($q) => $q->latest(),
+                'proveedorCatalogo', 'contratos.proveedor', 'licencias', 'bajas' => fn ($q) => $q->latest()->with(['solicitante:id,name', 'revisor:id,name'])])
             ->findOrFail($id);
 
         // Fase 2: tickets ligados a este activo (y a sus periféricos).
@@ -292,6 +305,35 @@ class AssetController extends Controller
         $asset->delete();
 
         return redirect()->route('assets.index')->with('success', 'Activo eliminado.');
+    }
+
+    /**
+     * Carta responsiva (Fase 3) en PDF. Con ?todos=1 incluye todos los
+     * activos vigentes bajo resguardo del mismo usuario.
+     */
+    public function responsiva(Request $request, $id)
+    {
+        $asset = Asset::with('asignado')->findOrFail($id);
+        $usuario = $asset->asignado;
+        $nombre = $usuario?->name ?? $asset->encargado;
+
+        if (! $nombre) {
+            return back()->with('error', 'Asigna el activo a un usuario (Resguardo) o captura el Encargado antes de generar la carta responsiva.');
+        }
+
+        $activos = ($request->boolean('todos') && $usuario)
+            ? Asset::vigentes()->where('asignado_a', $usuario->id)->with(['componentes', 'ubicacion'])->orderBy('nomenclatura')->get()
+            : collect([$asset->load(['componentes', 'ubicacion'])]);
+
+        AuditLog::registrar('asset.responsiva', "Generó carta responsiva de {$activos->count()} activo(s) para {$nombre}.", $asset);
+
+        return Pdf::loadView('assets.responsiva_pdf', [
+            'activos'  => $activos,
+            'nombre'   => $nombre,
+            'usuario'  => $usuario,
+            'hotel'    => \App\Models\Hotel::nombrePara($asset->hotel_code),
+            'emisor'   => auth()->user(),
+        ])->setPaper('letter')->download('Responsiva_' . \Illuminate\Support\Str::slug($nombre) . '_' . now()->format('Ymd') . '.pdf');
     }
 
     /**

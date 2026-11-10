@@ -59,7 +59,7 @@ class Asset extends Model
         'parent_id', 'nombre', 'categoria', 'nomenclatura', 'area', 'ubicacion_id',
         'encargado', 'asignado_a', 'ip_address', 'mac_address', 'status', 'notas',
         'pdf_path', 'imagen_path', 'division', 'tipo_equipo', 'marca', 'modelo',
-        'numero_serie', 'fecha_adquisicion', 'factura', 'proveedor', 'costo',
+        'numero_serie', 'fecha_adquisicion', 'factura', 'proveedor', 'proveedor_id', 'costo',
         'garantia_hasta', 'procesador', 'ram', 'tipo_ram', 'almacenamiento',
         'sistema_operativo', 'paqueteria_office', 'especificaciones',
         'fecha_baja', 'motivo_baja',
@@ -88,6 +88,26 @@ class Asset extends Model
     public function latestRevision()
     {
         return $this->hasOne(Revision::class)->latestOfMany();
+    }
+
+    public function proveedorCatalogo()
+    {
+        return $this->belongsTo(Proveedor::class, 'proveedor_id');
+    }
+
+    public function contratos()
+    {
+        return $this->belongsToMany(Contrato::class, 'asset_contrato');
+    }
+
+    public function licencias()
+    {
+        return $this->belongsToMany(Licencia::class, 'asset_licencia');
+    }
+
+    public function bajas()
+    {
+        return $this->hasMany(BajaActivo::class);
     }
 
     public function tickets()
