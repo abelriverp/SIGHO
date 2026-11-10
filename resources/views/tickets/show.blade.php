@@ -409,6 +409,32 @@
                         @error('cantidad')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
                     @endif
                 </div>
+
+                {{-- Fase 5: ligar a un problema (causa común de varios tickets) --}}
+                @php
+                    $problemasTicket = $ticket->problemas()->get(['problemas.id', 'titulo', 'estado']);
+                    $problemasAbiertos = \App\Models\Problema::whereNotIn('estado', ['resuelto', 'cerrado'])
+                        ->whereNotIn('id', $problemasTicket->pluck('id'))->orderByDesc('id')->get(['id', 'titulo']);
+                @endphp
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">🧩 Problema</h4>
+                    @foreach($problemasTicket as $pt)
+                        <a href="{{ route('problemas.show', $pt->id) }}" class="block text-xs py-0.5 text-[#041b32] hover:underline">P-{{ $pt->id }} · {{ $pt->titulo }} <span class="text-slate-400">({{ \App\Models\Problema::ESTADOS[$pt->estado] ?? $pt->estado }})</span></a>
+                    @endforeach
+                    @if($problemasAbiertos->isNotEmpty())
+                        <form action="{{ route('problemas.ligar', $ticket->id) }}" method="POST" class="mt-2 flex gap-2">
+                            @csrf
+                            <select name="problema_id" required class="flex-1 min-w-0 border border-slate-300 rounded text-xs p-1.5">
+                                <option value="">Ligar a problema abierto…</option>
+                                @foreach($problemasAbiertos as $pa)
+                                    <option value="{{ $pa->id }}">P-{{ $pa->id }} · {{ \Illuminate\Support\Str::limit($pa->titulo, 45) }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="bg-[#041b32] text-white text-xs font-bold px-3 py-1.5 rounded">Ligar</button>
+                        </form>
+                    @endif
+                    <a href="{{ route('problemas.create', ['ticket' => $ticket->id]) }}" class="inline-block mt-2 text-xs font-bold text-[#041b32] hover:underline">+ Abrir problema con este ticket</a>
+                </div>
             </div>
         @endif
 

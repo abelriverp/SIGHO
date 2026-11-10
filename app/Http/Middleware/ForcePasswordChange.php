@@ -17,7 +17,8 @@ class ForcePasswordChange
         $user = Auth::user();
 
         // Solo aplica a usuarios normales con must_change_password activo
-        if ($user->must_change_password && !$user->isAdmin()) {
+        // Fase 5: quien entra con Active Directory no usa contraseña local.
+        if ($user->must_change_password && !$user->isAdmin() && !($user->usuario_ad && app(\App\Services\Auth\DirectorioActivo::class)->habilitado())) {
             
             // Rutas que se permiten para no crear bucle infinito
             $rutasPermitidas = [

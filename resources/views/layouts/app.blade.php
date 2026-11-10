@@ -195,6 +195,7 @@
                                 <a href="{{ route('admin.departamentos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Departamentos (Tickets)</a>
                                 <a href="{{ route('admin.anuncios.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📢 Anuncios</a>
                                 <a href="{{ route('admin.auditoria.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📋 Bitácora</a>
+                                <a href="{{ route('admin.api-tokens.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">🔑 Tokens de API</a>
                             </div>
                         </div>
                         @endif
@@ -208,7 +209,7 @@
                             }
                         @endphp
                         <div class="relative group">
-                            <a href="{{ route('tickets.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('tickets.*') ? 'nav-pill-active' : '' }}">
+                            <a href="{{ route('tickets.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('tickets.*', 'conocimiento.*', 'problemas.*', 'cambios.*', 'direccion.*') ? 'nav-pill-active' : '' }}">
                                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                     <rect x="3" y="6" width="18" height="12" rx="1"></rect>
                                     <line x1="12" y1="6" x2="12" y2="18" stroke-dasharray="2,2"></line>
@@ -225,6 +226,13 @@
                                 <a href="{{ route('tickets.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Panel de Reportes</a>
                                 <a href="{{ route('tickets.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Levantar Ticket</a>
                                 <a href="{{ route('conocimiento.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📚 Base de conocimiento</a>
+                                @if($user->puedeResponderTickets() || $user->puedeVerTodos())
+                                    <a href="{{ route('problemas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">🧩 Problemas</a>
+                                    <a href="{{ route('cambios.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">🛠️ Cambios</a>
+                                @endif
+                                @if($user->puedeVerTodos())
+                                    <a href="{{ route('direccion.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📈 Tablero de dirección</a>
+                                @endif
                                 @if($user->puedeVerTodos() || $user->isTecnico())
                                     <a href="{{ route('tickets.reportes') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📊 Reportes / Corte de KPIs</a>
                                 @endif
@@ -417,6 +425,7 @@
                     <a href="{{ route('admin.departamentos.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Departamentos (Tickets)</a>
                     <a href="{{ route('admin.anuncios.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📢 Anuncios</a>
                     <a href="{{ route('admin.auditoria.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📋 Bitácora</a>
+                    <a href="{{ route('admin.api-tokens.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">🔑 Tokens de API</a>
                 </div>
                 @endif
 
@@ -430,6 +439,13 @@
                     </a>
                     <a href="{{ route('tickets.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Levantar Ticket</a>
                     <a href="{{ route('conocimiento.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📚 Base de conocimiento</a>
+                    @if($user->puedeResponderTickets() || $user->puedeVerTodos())
+                        <a href="{{ route('problemas.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">🧩 Problemas</a>
+                        <a href="{{ route('cambios.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">🛠️ Cambios</a>
+                    @endif
+                    @if($user->puedeVerTodos())
+                        <a href="{{ route('direccion.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📈 Tablero de dirección</a>
+                    @endif
                     @if($user->puedeVerTodos() || $user->isTecnico())
                         <a href="{{ route('tickets.reportes') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📊 Reportes / Corte de KPIs</a>
                     @endif

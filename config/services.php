@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+
+    // Fase 5 (nov 2026): login con Active Directory (ver App\Services\Auth\DirectorioActivo).
+    'ldap' => [
+        'enabled' => (bool) env('LDAP_ENABLED', false),
+        'host'    => env('LDAP_HOST'),
+        'port'    => (int) env('LDAP_PORT', 389),
+        'ssl'     => (bool) env('LDAP_SSL', false),
+        'dominio' => env('LDAP_DOMINIO'),
+        'timeout' => (int) env('LDAP_TIMEOUT', 5),
+    ],
+
 ];

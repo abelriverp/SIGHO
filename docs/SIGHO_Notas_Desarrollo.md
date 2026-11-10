@@ -312,3 +312,23 @@ Todo vive dentro del módulo `seguimiento_equipos_ti` (menú Activos). Permisos 
   - Columnas en `assets`: `monitorear`, `estado_monitoreo`, `ultimo_ping_at`, `latencia_ms`, `fallas_consecutivas`, `caido_desde`, `ticket_monitoreo_id`. Historial en `monitoreo_eventos`.
   - Tablero `/monitoreo`: estado, latencia, último ping y disponibilidad aproximada a 30 días (minutos caído entre minutos del periodo), eventos recientes y alta masiva de equipos con IP. Se recarga cada 2 min.
 - Tests: `tests/Feature/RedMonitoreoTest.php` (6 casos). Suite: 169 pruebas en SQLite.
+
+## 21. Fase 5: problemas, cambios, tablero de dirección, API y Active Directory (2026-11-10)
+
+- **Problemas** (`problemas`, pivote `problema_ticket`, `ProblemaController`, `/problemas`): la causa común de varios tickets. Estados abierto → en análisis → causa identificada → resuelto → cerrado. Campos: workaround, causa raíz, solución definitiva, equipo, ubicación y responsable.
+  - **Candidatos**: un equipo o ubicación con 3 o más tickets en 30 días y sin problema abierto sale como sugerencia en el listado; el botón precarga el formulario con esos tickets (90 días).
+  - Resolver o cerrar **exige causa raíz** y deja una nota pública automática en cada ticket ligado que siga abierto. No resuelve los tickets.
+  - Desde el detalle del ticket (panel del técnico): ligar a un problema abierto o abrir uno nuevo con ese ticket (`?ticket=ID`).
+  - Solo técnicos, gerentes y admins; un usuario normal recibe 403.
+- **Cambios** (`cambios`, pivote `asset_cambio`, `CambioController`, `/cambios`): plan de implementación y de **rollback obligatorios**, ventana, riesgo, impacto, equipos afectados y problema relacionado.
+  - Flujo en `Cambio::TRANSICIONES`. Normal: borrador → pendiente → aprobado (o rechazado) → en ejecución → completado o fallido. Estándar: al enviarlo pasa directo a aprobado. Emergencia: puede ir de borrador a en ejecución.
+  - Aprueba o rechaza solo gerente o admin, y **nunca el mismo solicitante salvo admin**. Rechazar pide motivo; completado y fallido piden resultado. Solo se edita en borrador, rechazado o fallido. Cada paso queda en bitácora.
+- **Tablero de dirección** (`TableroDireccionService`, `DireccionController`, `/direccion`, solo supervisores): un mes (`?mes=AAAA-MM`). Reusa `DashboardMetricsService::metricasPeriodo` y agrega tiempo medio de solución (general y por prioridad), antigüedad de pendientes, activos por estado y valor, bajas, disponibilidad del monitoreo, gasto anual en contratos MXN (mensual×12, trimestral×4), vencimientos a 90 días, problemas y cambios. `/direccion/pdf` con DomPDF.
+  - `sigho:reporte-mensual` (día 1, 08:30) manda el PDF del mes anterior a los admins y a los gerentes de cada propiedad (`ReporteMensualTINotification`). `--mes=AAAA-MM` para reenviar.
+- **Active Directory** (`Services\Auth\DirectorioActivo`, bind LDAP como `DOMINIO\usuario`): no sincroniza usuarios; el usuario debe existir en SIGHO con `users.usuario_ad` (campo en Admin → Usuarios, único).
+  - Login acepta correo o usuario de red. Con AD activo y usuario con `usuario_ad`: AD aceptó → entra; AD rechazó → falla aunque la contraseña local coincida; AD sin respuesta → se intenta la contraseña local (para no quedarse fuera si cae el DC).
+  - Quien entra con AD no pasa por el cambio forzado de contraseña. Contraseña vacía se rechaza siempre (AD la tomaría como bind anónimo).
+  - Requiere `extension=ldap` en php.ini y en `.env`: `LDAP_ENABLED=true`, `LDAP_HOST`, `LDAP_DOMINIO` (NetBIOS); opcionales `LDAP_PORT`, `LDAP_SSL`, `LDAP_TIMEOUT`. Con `LDAP_ENABLED=false` todo sigue como antes.
+- **API REST v1** (`routes/api.php`, `/api/v1`): `Authorization: Bearer sigho_…`, 60 peticiones por minuto. Endpoints: `GET activos`, `GET activos/{nomenclatura}`, `GET tickets`, `POST tickets` (requiere token con escritura), `GET monitoreo`, `GET kpis`.
+  - Tokens en `api_tokens` (solo hash sha256 y un prefijo visible), administrados en Admin → Tokens de API. El token se muestra **una sola vez**. Actúa como el usuario asignado (sus permisos y su propiedad), puede vencer y registra último uso.
+- Tests: `tests/Feature/GestionFase5Test.php` (17 casos). Suite: 186 pruebas en SQLite.

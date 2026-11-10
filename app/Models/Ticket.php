@@ -73,6 +73,12 @@ class Ticket extends Model
         return $this->hasMany(InventarioMovimiento::class);
     }
 
+    // Fase 5: problemas a los que pertenece este ticket.
+    public function problemas()
+    {
+        return $this->belongsToMany(Problema::class, 'problema_ticket');
+    }
+
     // Relación con el usuario que creó el ticket
     public function user()
     {

@@ -41,3 +41,7 @@ Schedule::command('sigho:alertas-vencimiento')->dailyAt('07:00');
 // "monitorear"; abre un ticket tras 3 fallas seguidas (ver
 // App\Console\Commands\MonitorearEquipos).
 Schedule::command('sigho:monitorear')->everyFiveMinutes()->withoutOverlapping(10);
+
+// Fase 5 (nov 2026) — Reporte mensual de TI en PDF a gerentes y admins,
+// el día 1 a las 08:30 (ver App\Console\Commands\ReporteMensualTI).
+Schedule::command('sigho:reporte-mensual')->monthlyOn(1, '08:30');

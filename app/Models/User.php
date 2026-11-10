@@ -21,6 +21,7 @@ class User extends Authenticatable
         'area',
         'must_change_password',
         'hotel_code',
+        'usuario_ad',
     ];
 
     protected $hidden = [

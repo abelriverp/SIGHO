@@ -36,6 +36,7 @@ class AdminSettingsController extends Controller
         $data = $request->validate([
             'name'         => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
+            'usuario_ad'   => 'nullable|string|max:100|unique:users,usuario_ad',
             'password'     => 'required|string|min:6',
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
             'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
@@ -81,6 +82,7 @@ class AdminSettingsController extends Controller
         $data = $request->validate([
             'name'         => 'required|string|max:255',
             'email'        => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'usuario_ad'   => ['nullable', 'string', 'max:100', Rule::unique('users', 'usuario_ad')->ignore($user->id)],
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
             'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
             'area'         => 'nullable|string|exists:areas,nombre',

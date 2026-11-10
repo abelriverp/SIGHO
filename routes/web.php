@@ -12,7 +12,7 @@ use App\Http\Controllers\{
     ExtensionDeteccionController, PerfilCorreoValidacionController,
     ConocimientoController, RespuestaPredefinidaController, TicketRecurrenteController,
     ProveedorController, ContratoController, LicenciaController, VencimientoController, BajaActivoController,
-    SegmentoRedController, MonitoreoController
+    SegmentoRedController, MonitoreoController, ProblemaController, CambioController, DireccionController, ApiTokenController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -221,6 +221,20 @@ Route::middleware('auth')->group(function () {
         Route::delete('/recurrentes/{recurrente}', [TicketRecurrenteController::class, 'destroy'])->name('recurrentes.destroy');
     });
 
+    // Fase 5 (nov 2026): gestión de problemas y cambios (técnicos, gerentes y admin).
+    Route::middleware(['modulo:gestion_tickets'])->group(function () {
+        Route::resource('problemas', ProblemaController::class)->except(['destroy']);
+        Route::post('/tickets/{id}/problema', [ProblemaController::class, 'ligarTicket'])->name('problemas.ligar');
+        Route::resource('cambios', CambioController::class)->except(['destroy']);
+        Route::post('/cambios/{cambio}/estado', [CambioController::class, 'transicion'])->name('cambios.transicion');
+    });
+
+    // Fase 5: tablero de TI para dirección (gerente y admin).
+    Route::middleware(['supervisor'])->group(function () {
+        Route::get('/direccion', [DireccionController::class, 'index'])->name('direccion.index');
+        Route::get('/direccion/pdf', [DireccionController::class, 'pdf'])->name('direccion.pdf');
+    });
+
     // Fase 2: base de conocimiento (lectura para todos con Tickets).
     Route::middleware(['modulo:gestion_tickets'])->prefix('conocimiento')->name('conocimiento.')->group(function () {
         Route::get('/', [ConocimientoController::class, 'index'])->name('index');
@@ -263,6 +277,10 @@ Route::middleware('auth')->group(function () {
     // ⚙️ ADMINISTRACIÓN
     // ==========================================
     Route::middleware([CheckAdmin::class])->prefix('admin')->name('admin.')->group(function () {
+        // Fase 5: tokens de la API REST.
+        Route::get('/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+        Route::post('/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+        Route::delete('/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
         Route::get('/usuarios', [AdminSettingsController::class, 'usersIndex'])->name('users.index');
         Route::get('/usuarios/crear', [AdminSettingsController::class, 'usersCreate'])->name('users.create');
         Route::post('/usuarios', [AdminSettingsController::class, 'usersStore'])->name('users.store');

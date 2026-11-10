@@ -36,8 +36,8 @@
 
             <form action="{{ route('login.post') }}" method="POST">
                 @csrf <div class="mb-5">
-                    <label class="block text-gray-500 text-xs font-bold mb-2 uppercase tracking-wide">Correo Electrónico</label>
-                    <input type="email" name="email" value="{{ old('email') }}" 
+                    <label class="block text-gray-500 text-xs font-bold mb-2 uppercase tracking-wide">Correo o usuario de red</label>
+                    <input type="text" autocomplete="username" name="email" value="{{ old('email') }}" 
                         placeholder="ejemplo@emporio.com" 
                         class="w-full bg-gray-100 text-gray-700 border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:bg-white focus:border-slate-800 transition-colors" required>
                     @error('email')

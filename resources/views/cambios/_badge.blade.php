@@ -1,0 +1,2 @@
+@php $colores = ['borrador' => 'bg-slate-100 text-slate-700', 'pendiente_aprobacion' => 'bg-amber-100 text-amber-800', 'aprobado' => 'bg-blue-100 text-blue-800', 'rechazado' => 'bg-red-100 text-red-800', 'en_ejecucion' => 'bg-purple-100 text-purple-800', 'completado' => 'bg-green-100 text-green-800', 'fallido' => 'bg-red-200 text-red-900', 'cancelado' => 'bg-slate-200 text-slate-500']; @endphp
+<span class="py-1 px-2 rounded-full text-xs font-bold whitespace-nowrap {{ $colores[$estado] ?? '' }}">{{ \App\Models\Cambio::ESTADOS[$estado] ?? $estado }}</span>

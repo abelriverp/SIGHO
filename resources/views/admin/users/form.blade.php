@@ -22,6 +22,14 @@
                     class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3">
             </div>
 
+            {{-- Fase 5: login con Active Directory --}}
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Usuario de red (Active Directory)</label>
+                <input type="text" name="usuario_ad" value="{{ old('usuario_ad', $user->usuario_ad ?? '') }}" maxlength="100"
+                    class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 font-mono" placeholder="Ej: arivera">
+                <p class="text-[10px] text-slate-400 mt-1 italic">Opcional. Si Active Directory está habilitado, este usuario entra con su contraseña de Windows.</p>
+            </div>
+
             <div>
                 <label class="block text-sm font-bold text-slate-700 mb-1">
                     {{ isset($user) ? 'Nueva Contraseña (dejar en blanco para no cambiar)' : 'Contraseña Temporal' }}
