@@ -3,9 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AuthController, AssetController, RevisionController,
-    InventoryController, NetworkController, PeripheralController,
-    TicketController, AdminSettingsController, HabitacionActivoController,
-    ActivoPlantillaController, ActivoItemController,
+    InventoryController, NetworkController,
+    TicketController, AdminSettingsController, UbicacionController,
     ProfileController, DashboardController,
     TicketCategoriaController, SlaPoliticaController,
     GuestPortalController, PuntoQrController, AnuncioController,
@@ -57,36 +56,24 @@ Route::middleware('auth')->group(function () {
     // 🛡️ MÓDULOS DEL SISTEMA
     // ==========================================
 
-    // Módulo legacy (habitaciones fijas) — se mantiene para no romper datos existentes
-    Route::middleware(['modulo:inventario_habitaciones'])->prefix('inventario')->name('habitaciones.')->group(function () {
-        Route::get('/habitaciones-legacy', [HabitacionActivoController::class, 'index'])->name('index');
-        Route::post('/habitaciones', [HabitacionActivoController::class, 'store'])->name('store');
-        Route::put('/habitaciones/{id}', [HabitacionActivoController::class, 'update'])->name('update');
-    });
-
-    // Módulo nuevo: Activos multi-área con plantillas dinámicas
-    Route::middleware(['modulo:inventario_habitaciones'])->prefix('inventario')->name('activos.')->group(function () {
-        Route::get('/', [ActivoItemController::class, 'index'])->name('index');
-        Route::post('/activos', [ActivoItemController::class, 'store'])->name('store');
-        Route::put('/activos/{id}', [ActivoItemController::class, 'update'])->name('update');
-        Route::delete('/activos/{id}', [ActivoItemController::class, 'destroy'])->name('destroy');
-        // Endpoint AJAX para obtener campos de una plantilla
-        Route::get('/activos/plantilla/{id}', [ActivoItemController::class, 'plantillaJson'])->name('plantilla.json');
-    });
-
+    // Activos y Ubicaciones (Fase 1, nov 2026): catálogo único de activos
+    // (antes Seguimiento de Equipos + Periféricos + Inventario de
+    // Habitaciones). Ver App\Models\Asset y App\Models\Ubicacion.
     Route::middleware(['modulo:seguimiento_equipos_ti'])->group(function () {
-        Route::get('/seguimiento', [AssetController::class, 'index'])->name('assets.index');
-        Route::get('/seguimiento/crear', [AssetController::class, 'create'])->name('assets.create');
-        Route::get('/assets/perifericos', [AssetController::class, 'perifericos'])->name('assets.perifericos');
-        Route::get('/assets/exportar', [AssetController::class, 'exportExcel'])->name('assets.export');
-        Route::post('/assets/importar-excel', [AssetController::class, 'importExcel'])->name('assets.import');
-        Route::patch('/assets/{id}/division', [AssetController::class, 'cambiarDivision'])->name('assets.division');
-        Route::post('/assets/mover-lote', [AssetController::class, 'moverLote'])->name('assets.moverLote');
+        Route::get('/activos', [AssetController::class, 'index'])->name('assets.index');
+        Route::get('/activos/crear', [AssetController::class, 'create'])->name('assets.create');
+        Route::get('/activos/exportar', [AssetController::class, 'exportCsv'])->name('assets.export');
+        Route::get('/activos/plantilla', [AssetController::class, 'plantillaCsv'])->name('assets.plantilla');
+        Route::post('/activos/importar', [AssetController::class, 'importCsv'])->name('assets.import');
+        Route::post('/activos/mover-lote', [AssetController::class, 'moverLote'])->name('assets.moverLote');
         Route::resource('assets', AssetController::class)->except(['index', 'create']);
 
         Route::get('assets/{asset}/revisions/create', [RevisionController::class, 'create'])->name('revisions.create');
         Route::post('assets/{asset}/revisions', [RevisionController::class, 'store'])->name('revisions.store');
         Route::resource('revisions', RevisionController::class)->only(['edit', 'update', 'destroy']);
+
+        Route::post('/ubicaciones/generar-habitaciones', [UbicacionController::class, 'generarHabitaciones'])->name('ubicaciones.generar');
+        Route::resource('ubicaciones', UbicacionController::class)->parameters(['ubicaciones' => 'ubicacion']);
     });
 
     Route::middleware(['modulo:inventario_suministros'])->group(function () {
@@ -260,8 +247,5 @@ Route::middleware('auth')->group(function () {
         // propiedadActivaUpdate y Hotel::activoParaUsuario.
         Route::post('/propiedad-activa', [AdminSettingsController::class, 'propiedadActivaUpdate'])->name('propiedad-activa.update');
 
-        // Gestión de áreas y plantillas para el módulo de activos
-        Route::resource('activo-plantillas', ActivoPlantillaController::class)
-            ->names('activo-plantillas');
     });
 });

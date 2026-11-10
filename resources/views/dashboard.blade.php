@@ -212,11 +212,9 @@
             <nav class="space-y-2" aria-label="Sidebar">
                 @php
                     $modulosConfig = [
-                        ['id' => 'seguimiento_equipos_ti', 'name' => 'Seguimiento de Equipos', 'route' => 'assets.index', 'bg' => 'bg-blue-50 text-blue-700'],
+                        ['id' => 'seguimiento_equipos_ti', 'name' => 'Activos y Ubicaciones', 'route' => 'assets.index', 'bg' => 'bg-blue-50 text-blue-700'],
                         ['id' => 'inventario_suministros', 'name' => 'Suministros', 'route' => 'inventory.index', 'bg' => 'bg-emerald-50 text-emerald-700'],
                         ['id' => 'red_infraestructura', 'name' => 'Red e Infraestructura', 'route' => 'network.index', 'bg' => 'bg-purple-50 text-purple-700'],
-                        ['id' => 'perifericos', 'name' => 'Periféricos', 'route' => 'assets.perifericos', 'bg' => 'bg-pink-50 text-pink-700'],
-                        ['id' => 'inventario_habitaciones', 'name' => 'Habitaciones', 'route' => 'habitaciones.index', 'bg' => 'bg-orange-50 text-orange-700'],
                         ['id' => 'gestion_tickets', 'name' => 'Mesa de Tickets', 'route' => 'tickets.index', 'bg' => 'bg-indigo-50 text-indigo-700'],
                     ];
                 @endphp

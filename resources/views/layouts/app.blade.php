@@ -85,21 +85,22 @@
                             <span>Dashboard</span>
                         </a>
 
-                        {{-- 1. SEGUIMIENTO --}}
+                        {{-- 1. ACTIVOS Y UBICACIONES (Fase 1) --}}
                         @if($user->tieneModulo('seguimiento_equipos_ti'))
                         <div class="relative group">
-                            <a href="{{ route('assets.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('assets.*') && !request()->routeIs('assets.perifericos') ? 'nav-pill-active' : '' }}">
+                            <a href="{{ route('assets.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('assets.*') || request()->routeIs('ubicaciones.*') || request()->routeIs('revisions.*') ? 'nav-pill-active' : '' }}">
                                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                     <rect x="3" y="4" width="18" height="12" rx="1"></rect>
                                     <line x1="8" y1="20" x2="16" y2="20"></line>
                                     <line x1="12" y1="16" x2="12" y2="20"></line>
                                 </svg>
-                                <span>Seguimiento</span>
+                                <span>Activos</span>
                                 <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </a>
-                            <div class="absolute left-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
-                                <a href="{{ route('assets.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Equipos</a>
-                                <a href="{{ route('assets.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nuevo Equipo</a>
+                            <div class="absolute left-0 top-full w-52 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
+                                <a href="{{ route('assets.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver activos</a>
+                                <a href="{{ route('assets.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nuevo activo</a>
+                                <a href="{{ route('ubicaciones.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Ubicaciones y habitaciones</a>
                             </div>
                         </div>
                         @endif
@@ -148,43 +149,6 @@
                         </div>
                         @endif
 
-                        {{-- 4. PERIFÉRICOS --}}
-                        @if($user->tieneModulo('perifericos'))
-                        <div class="relative group">
-                            <a href="{{ route('assets.perifericos') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('assets.perifericos') ? 'nav-pill-active' : '' }}">
-                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                    <rect x="3" y="6" width="11" height="7" rx="1"></rect>
-                                    <line x1="6" y1="17" x2="11" y2="17"></line>
-                                    <line x1="8.5" y1="13" x2="8.5" y2="17"></line>
-                                    <circle cx="19" cy="12" r="3"></circle>
-                                </svg>
-                                <span>Periféricos</span>
-                                <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </a>
-                            <div class="absolute left-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
-                                <a href="{{ route('assets.perifericos') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Lista General</a>
-                                <a href="{{ route('assets.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Registrar Equipo</a>
-                            </div>
-                        </div>
-                        @endif
-
-                        {{-- 5. ACTIVOS POR ÁREA --}}
-                        @if($user->tieneModulo('inventario_habitaciones'))
-                        <div class="relative group">
-                            <a href="{{ route('activos.index') }}" class="nav-pill gap-1.5 px-2.5 2xl:px-3 py-2 {{ request()->routeIs('activos.*') ? 'nav-pill-active' : '' }}">
-                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                    <rect x="4" y="3" width="16" height="18"></rect>
-                                    <rect x="10" y="13" width="4" height="8"></rect>
-                                </svg>
-                                <span>Activos</span>
-                                <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </a>
-                            <div class="absolute left-0 top-full w-52 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
-                                <a href="{{ route('activos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Inventario por Área</a>
-                            </div>
-                        </div>
-                        @endif
-
                         {{-- 6.5. HERRAMIENTAS DE RECEPCIÓN --}}
                         @if($user->tieneModulo('herramientas_recepcion'))
                         <div class="relative group">
@@ -219,7 +183,6 @@
                                 <a href="{{ route('admin.hoteles.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">🏨 Propiedades</a>
                                 <a href="{{ route('admin.areas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Catálogo de Áreas</a>
                                 <a href="{{ route('admin.departamentos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Departamentos (Tickets)</a>
-                                <a href="{{ route('admin.activo-plantillas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Áreas de Activos</a>
                                 <a href="{{ route('admin.anuncios.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📢 Anuncios</a>
                                 <a href="{{ route('admin.auditoria.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📋 Bitácora</a>
                             </div>
@@ -376,11 +339,12 @@
 
                 @if($user->tieneModulo('seguimiento_equipos_ti'))
                 <div class="border-t border-[#0a2f57]/60 pt-1 mt-1">
-                    <a href="{{ route('assets.index') }}" @click="mobileMenuOpen = false" class="flex items-center gap-2 px-2 py-2.5 font-bold uppercase text-[13px] rounded {{ request()->routeIs('assets.*') && !request()->routeIs('assets.perifericos') ? 'text-blue-400' : 'text-white hover:bg-[#0a2f57]' }}">
+                    <a href="{{ route('assets.index') }}" @click="mobileMenuOpen = false" class="flex items-center gap-2 px-2 py-2.5 font-bold uppercase text-[13px] rounded {{ request()->routeIs('assets.*') ? 'text-blue-400' : 'text-white hover:bg-[#0a2f57]' }}">
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1"></rect><line x1="8" y1="20" x2="16" y2="20"></line><line x1="12" y1="16" x2="12" y2="20"></line></svg>
-                        Seguimiento
+                        Activos
                     </a>
-                    <a href="{{ route('assets.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">+ Nuevo Equipo</a>
+                    <a href="{{ route('assets.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">+ Nuevo activo</a>
+                    <a href="{{ route('ubicaciones.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Ubicaciones y habitaciones</a>
                 </div>
                 @endif
 
@@ -408,25 +372,6 @@
                 </div>
                 @endif
 
-                @if($user->tieneModulo('perifericos'))
-                <div class="border-t border-[#0a2f57]/60 pt-1 mt-1">
-                    <a href="{{ route('assets.perifericos') }}" @click="mobileMenuOpen = false" class="flex items-center gap-2 px-2 py-2.5 font-bold uppercase text-[13px] rounded {{ request()->routeIs('assets.perifericos') ? 'text-blue-400' : 'text-white hover:bg-[#0a2f57]' }}">
-                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="7" rx="1"></rect><line x1="6" y1="17" x2="11" y2="17"></line><line x1="8.5" y1="13" x2="8.5" y2="17"></line><circle cx="19" cy="12" r="3"></circle></svg>
-                        Periféricos
-                    </a>
-                    <a href="{{ route('assets.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Registrar Equipo</a>
-                </div>
-                @endif
-
-                @if($user->tieneModulo('inventario_habitaciones'))
-                <div class="border-t border-[#0a2f57]/60 pt-1 mt-1">
-                    <a href="{{ route('activos.index') }}" @click="mobileMenuOpen = false" class="flex items-center gap-2 px-2 py-2.5 font-bold uppercase text-[13px] rounded {{ request()->routeIs('activos.*') ? 'text-blue-400' : 'text-white hover:bg-[#0a2f57]' }}">
-                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18"></rect><rect x="10" y="13" width="4" height="8"></rect></svg>
-                        Activos
-                    </a>
-                </div>
-                @endif
-
                 @if($user->tieneModulo('herramientas_recepcion'))
                 <div class="border-t border-[#0a2f57]/60 pt-1 mt-1">
                     <a href="{{ route('recepcion.index') }}" @click="mobileMenuOpen = false" class="flex items-center gap-2 px-2 py-2.5 font-bold uppercase text-[13px] rounded {{ request()->routeIs('recepcion.*') ? 'text-blue-400' : 'text-white hover:bg-[#0a2f57]' }}">
@@ -448,7 +393,6 @@
                     <a href="{{ route('admin.hoteles.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">🏨 Propiedades</a>
                     <a href="{{ route('admin.areas.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Catálogo de Áreas</a>
                     <a href="{{ route('admin.departamentos.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Departamentos (Tickets)</a>
-                    <a href="{{ route('admin.activo-plantillas.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Áreas de Activos</a>
                     <a href="{{ route('admin.anuncios.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📢 Anuncios</a>
                     <a href="{{ route('admin.auditoria.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📋 Bitácora</a>
                 </div>

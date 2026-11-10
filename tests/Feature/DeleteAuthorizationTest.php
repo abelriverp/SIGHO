@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\ActivoItem;
 use App\Models\Asset;
 use App\Models\Hotel;
 use App\Models\InventarioItem;
 use App\Models\NetworkDevice;
-use App\Models\Peripheral;
+use App\Models\Ubicacion;
 use App\Models\Revision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,8 +49,7 @@ class DeleteAuthorizationTest extends TestCase
             'Revision'       => [Revision::class],
             'InventarioItem' => [InventarioItem::class],
             'NetworkDevice'  => [NetworkDevice::class],
-            'Peripheral'     => [Peripheral::class],
-            'ActivoItem'     => [ActivoItem::class],
+            'Ubicacion'      => [Ubicacion::class],
         ];
     }
 

@@ -12,8 +12,8 @@ class ModulosSeeder extends Seeder
         $modulos = [
             [
                 'clave'       => 'seguimiento_equipos_ti',
-                'nombre'      => 'Seguimiento de Equipos',
-                'descripcion' => 'Inventario y seguimiento de equipos y activos operativos de cualquier área (cómputo, mantenimiento, aires acondicionados, etc.)',
+                'nombre'      => 'Activos y Ubicaciones',
+                'descripcion' => 'Catálogo único de activos (cómputo, red, TV, seguridad, energía, periféricos) con ubicación, resguardo, garantía y ciclo de vida',
                 'icono'       => 'desktop-computer',
                 'ruta_base'   => 'assets.index',
                 'activo'      => true,
@@ -38,31 +38,13 @@ class ModulosSeeder extends Seeder
                 'orden'       => 3,
             ],
             [
-                'clave'       => 'perifericos',
-                'nombre'      => 'Periféricos',
-                'descripcion' => 'Control de periféricos: teclados, mouse, monitores, etc.',
-                'icono'       => 'device-tablet',
-                'ruta_base'   => 'assets.perifericos',
-                'activo'      => true,
-                'orden'       => 4,
-            ],
-            [
-                'clave'       => 'inventario_habitaciones',
-                'nombre'      => 'Inventario de Habitaciones',
-                'descripcion' => 'Equipos e inventario por piso y habitación',
-                'icono'       => 'home-modern',
-                'ruta_base'   => 'habitaciones.index',
-                'activo'      => true,
-                'orden'       => 5,
-            ],
-            [
                 'clave'       => 'gestion_tickets',
                 'nombre'      => 'Gestión de Tickets',
                 'descripcion' => 'Creación y seguimiento de tickets de soporte y mantenimiento',
                 'icono'       => 'ticket',
                 'ruta_base'   => 'tickets.index',
                 'activo'      => true,
-                'orden'       => 6,
+                'orden'       => 4,
             ],
             [
                 'clave'       => 'herramientas_recepcion',
@@ -71,7 +53,7 @@ class ModulosSeeder extends Seeder
                 'icono'       => 'envelope-open',
                 'ruta_base'   => 'recepcion.index',
                 'activo'      => true,
-                'orden'       => 7,
+                'orden'       => 5,
             ],
         ];
 

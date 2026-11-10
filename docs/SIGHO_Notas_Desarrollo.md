@@ -252,3 +252,21 @@ Fase 0 (higiene):
 - Comando `sigho:respaldar` (02:30 diario): mysqldump + `storage/app` en ZIP en `storage/app/respaldos`, copia opcional a `BACKUP_PATH`, conserva `BACKUP_DIAS` (14). Lee todo por `config('app.*')`, nunca `env()`. Requiere que la tarea programada de Windows corra `schedule:run` cada minuto.
 - Todas las tablas de vistas internas quedaron dentro de `overflow-x-auto` (pendiente de la sección 12).
 - Ya estaba resuelto por el parche de Cancún: nombre de hotel en `tickets/reportes_pdf`.
+
+## 17. Fase 1: catálogo único de Activos y Ubicaciones (2026-11-10)
+
+Decisión de Abel: solo Cancún, base vacía (no se migran datos), avance fase por fase.
+
+- **Ubicaciones** (`ubicaciones`, modelo `Ubicacion`, `BelongsToHotel`): tipos `habitacion | area | oficina | site | exterior`; `codigo` único por propiedad y guardado en mayúsculas. Generador por piso (`POST ubicaciones/generar-habitaciones`: piso 12, 1–30, 2 dígitos → 1201–1230; omite existentes, máximo 300). No se elimina una ubicación con activos (se pide moverlos o desactivarla). `UbicacionPolicy`: solo admin/gerente eliminan.
+- **Activos**: se conserva la tabla `assets` (modelo `Asset`) como catálogo único. Nuevas columnas: `categoria`, `ubicacion_id`, `asignado_a` (resguardo, FK users), `parent_id` (periférico/componente ligado a otro activo), `mac_address`, `proveedor`, `costo`, `garantia_hasta`, `especificaciones` (JSON, sin UI todavía), `fecha_baja`, `motivo_baja`. Constantes `Asset::CATEGORIAS`, `ESTADOS` (`En almacén | Activo | En Reparación | Baja`, se respetaron los valores históricos) y `TIPOS_SUGERIDOS` (datalist; el tipo sigue siendo texto libre).
+- Monitor/mouse/teclado ya **no** son columnas: son activos de categoría Periférico con `parent_id`.
+- `nombre` es NOT NULL: si no se captura, se arma con tipo + marca + modelo o la nomenclatura.
+- Ubicación, usuario y activo padre se validan contra la propiedad del usuario (la regla `exists:` no aplica `HotelScope`). Un activo no puede ligarse a sí mismo.
+- Estado `Baja` llena `fecha_baja` (hoy por defecto); cualquier otro estado limpia `fecha_baja`/`motivo_baja`.
+- Auditoría: `asset.creado`, `asset.movido` (cambio de estado/ubicación/resguardo/liga), `asset.movido_lote`, `asset.importacion`, `asset.eliminado`, `ubicacion.eliminada`.
+- Importación/exportación por **CSV** (servidor, `fgetcsv`), con plantilla descargable. Detecta `,` o `;`, quita BOM, crea ubicaciones inexistentes (solo dígitos → habitación), resuelve ligas a padre en segunda pasada y reporta hasta 10 errores. Reemplaza la importación de Excel en el navegador de la vista vieja de Periféricos.
+- Mover en lote: ubicación, estado y/o división (y área por JSON, compatible con `AssetMoverLoteTest`).
+- Rutas: `/activos`, `/activos/crear`, `/activos/exportar`, `/activos/plantilla`, `/activos/importar`, `/activos/mover-lote`, `resource assets` (sin index/create), `resource ubicaciones` (parámetro `{ubicacion}`). Se retiraron `assets.perifericos`, `assets.division` y `admin.activo-plantillas`.
+- Se retiraron (código y tablas): `peripherals` (estaba sin rutas), `habitacion_activos`, `activo_plantillas`, `activo_items`, y los módulos `perifericos` e `inventario_habitaciones`. El módulo `seguimiento_equipos_ti` conserva su clave y ahora se llama "Activos y Ubicaciones".
+- Pendiente para Fase 2: `puntos_qr.ubicacion_id` (ligar el QR del huésped a la ubicación) y `tickets.asset_id` / `tickets.ubicacion_id`.
+- Tests: `tests/Feature/ActivosUbicacionesTest.php` (12 casos). Suite completa: 141 pruebas en SQLite.
