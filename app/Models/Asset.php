@@ -90,6 +90,11 @@ class Asset extends Model
         return $this->hasOne(Revision::class)->latestOfMany();
     }
 
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
     public function ubicacion()
     {
         return $this->belongsTo(Ubicacion::class);

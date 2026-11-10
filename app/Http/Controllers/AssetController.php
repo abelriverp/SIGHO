@@ -226,7 +226,11 @@ class AssetController extends Controller
         $asset = Asset::with(['ubicacion', 'asignado', 'padre', 'componentes.ubicacion', 'revisions' => fn ($q) => $q->latest()])
             ->findOrFail($id);
 
-        return view('assets.show', compact('asset'));
+        // Fase 2: tickets ligados a este activo (y a sus periféricos).
+        $tickets = \App\Models\Ticket::whereIn('asset_id', $asset->componentes->pluck('id')->push($asset->id))
+            ->latest()->limit(15)->get(['id', 'status', 'descripcion', 'created_at', 'asset_id', 'prioridad']);
+
+        return view('assets.show', compact('asset', 'tickets'));
     }
 
     public function edit($id)

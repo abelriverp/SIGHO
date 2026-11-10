@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'      => CheckAdmin::class,
             'modulo'     => CheckModuloAcceso::class,
             'supervisor' => CheckSupervisor::class,
+            'portal_huesped' => \App\Http\Middleware\PortalHuespedActivo::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

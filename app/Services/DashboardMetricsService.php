@@ -92,7 +92,8 @@ class DashboardMetricsService
         $hasta = $hasta->copy()->endOfDay();
 
         $tickets = $this->ticketsVisibles($user, $hotelActivo)
-            ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'operador_id', 'created_at', 'fecha_resolucion']);
+            ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'operador_id', 'created_at', 'fecha_resolucion',
+                   'asset_id', 'ubicacion_id', 'veces_reasignado', 'motivo_reapertura', 'csat_calificacion', 'csat_at']);
 
         $creados = $tickets->filter(
             fn ($t) => $t->created_at && $t->created_at->between($desde, $hasta)
@@ -129,7 +130,53 @@ class DashboardMetricsService
             'miDesempeno'           => $user->isTecnico()
                 ? $this->miDesempeno($resueltos, $user)
                 : null,
+            // Fase 2 (nov 2026): calidad y dónde se concentran las fallas.
+            'calidad'               => $this->calidad($tickets, $resueltos, $desde, $hasta),
+            'topActivos'            => $this->topRelacionados($creados, 'asset_id'),
+            'topUbicaciones'        => $this->topRelacionados($creados, 'ubicacion_id'),
         ];
+    }
+
+    /**
+     * CSAT promedio (encuestas contestadas en el rango), % de tickets
+     * resueltos en el rango que alguna vez se reabrieron y % resueltos sin
+     * reasignar.
+     */
+    private function calidad(Collection $todos, Collection $resueltos, Carbon $desde, Carbon $hasta): array
+    {
+        $encuestas = $todos->filter(fn ($t) => $t->csat_calificacion && $t->csat_at && $t->csat_at->between($desde, $hasta));
+        $total = $resueltos->count();
+
+        return [
+            'csatPromedio'       => $encuestas->isEmpty() ? null : round($encuestas->avg('csat_calificacion'), 2),
+            'csatRespuestas'     => $encuestas->count(),
+            'reaperturaPct'      => $total ? round($resueltos->filter(fn ($t) => filled($t->motivo_reapertura))->count() / $total * 100, 1) : null,
+            'sinReasignarPct'    => $total ? round($resueltos->filter(fn ($t) => (int) $t->veces_reasignado === 0)->count() / $total * 100, 1) : null,
+        ];
+    }
+
+    /** Top 10 activos o ubicaciones con más tickets levantados en el rango. */
+    private function topRelacionados(Collection $creados, string $columna): array
+    {
+        $conteo = $creados->whereNotNull($columna)->countBy($columna)->sortDesc()->take(10);
+        if ($conteo->isEmpty()) {
+            return [];
+        }
+
+        $modelos = $columna === 'asset_id'
+            ? \App\Models\Asset::whereIn('id', $conteo->keys())->get(['id', 'nomenclatura', 'nombre', 'tipo_equipo'])->keyBy('id')
+            : \App\Models\Ubicacion::whereIn('id', $conteo->keys())->get(['id', 'tipo', 'codigo', 'nombre'])->keyBy('id');
+
+        return $conteo->map(function ($total, $id) use ($modelos, $columna) {
+            $m = $modelos->get($id);
+            return [
+                'id'       => (int) $id,
+                'etiqueta' => $m
+                    ? ($columna === 'asset_id' ? $m->nomenclatura . ' · ' . ($m->tipo_equipo ?: $m->nombre) : $m->etiqueta)
+                    : 'Eliminado',
+                'total'    => $total,
+            ];
+        })->values()->all();
     }
 
     private function ticketsVisibles(User $user, string $hotelActivo)

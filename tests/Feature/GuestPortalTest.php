@@ -21,6 +21,24 @@ class GuestPortalTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // El portal esta apagado por defecto (Fase 2); estas pruebas cubren su
+        // funcionamiento cuando se activa con PORTAL_HUESPED=true.
+        config(['app.portal_huesped' => true]);
+    }
+
+    public function test_el_portal_responde_404_cuando_esta_apagado(): void
+    {
+        config(['app.portal_huesped' => false]);
+        $this->crearPropiedad('HEMZT');
+        $punto = $this->crearPunto('HEMZT');
+
+        $this->get(route('guest.show', $punto->token))->assertNotFound();
+        $this->post(route('guest.store', $punto->token), [])->assertNotFound();
+    }
+
     private function crearPropiedad(string $hotelCode): void
     {
         Hotel::firstOrCreate(['hotel_code' => $hotelCode], ['nombre' => "Hotel {$hotelCode}"]);

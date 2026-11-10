@@ -151,6 +151,58 @@
         </div>
     </div>
 
+    {{-- Fase 2 (nov 2026): calidad del servicio y dónde se concentran las fallas --}}
+    @php $cal = $metricas['calidad']; @endphp
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase">Satisfacción (CSAT)</p>
+            <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $cal['csatPromedio'] !== null ? $cal['csatPromedio'].' / 5' : '—' }}</p>
+            <p class="text-xs text-gray-400">{{ $cal['csatRespuestas'] }} encuesta(s) en el rango · meta ≥ 4.5</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase">Tickets reabiertos</p>
+            <p class="text-2xl font-bold {{ $cal['reaperturaPct'] !== null && $cal['reaperturaPct'] > 5 ? 'text-red-600' : 'text-[#041b32]' }} mt-1">{{ $cal['reaperturaPct'] !== null ? $cal['reaperturaPct'].'%' : '—' }}</p>
+            <p class="text-xs text-gray-400">De los resueltos en el rango · meta &lt; 5%</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase">Resueltos sin reasignar</p>
+            <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $cal['sinReasignarPct'] !== null ? $cal['sinReasignarPct'].'%' : '—' }}</p>
+            <p class="text-xs text-gray-400">Llegaron al departamento correcto a la primera · meta ≥ 70%</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        @foreach([['Equipos con más tickets', $metricas['topActivos'], 'assets.show'], ['Habitaciones y áreas con más tickets', $metricas['topUbicaciones'], 'ubicaciones.show']] as [$titulo, $filas, $ruta])
+            <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-gray-50 px-5 py-3 border-b border-gray-100">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase">{{ $titulo }} (levantados en el rango)</h3>
+                </div>
+                @if(empty($filas))
+                    <div class="p-6 text-center text-sm text-gray-400">Sin tickets ligados a {{ $ruta === 'assets.show' ? 'equipos' : 'ubicaciones' }} en el rango.</div>
+                @else
+                    <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <tbody class="divide-y divide-gray-50">
+                            @foreach($filas as $f)
+                                <tr>
+                                    <td class="px-5 py-2">
+                                        @if(auth()->user()->tieneModulo('seguimiento_equipos_ti') && $f['etiqueta'] !== 'Eliminado')
+                                            <a href="{{ route($ruta, $f['id']) }}" class="text-blue-800 hover:underline">{{ $f['etiqueta'] }}</a>
+                                        @else
+                                            {{ $f['etiqueta'] }}
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-2 text-right font-bold text-[#041b32]">{{ $f['total'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    </div>
+                @endif
+            </div>
+        @endforeach
+    </div>
+
     {{-- Mi desempeño (solo técnico): su propio desglose dentro de su
          departamento, pensado para que arme su reporte del periodo sin
          necesitar el ranking completo (que es exclusivo de admin/gerente). --}}

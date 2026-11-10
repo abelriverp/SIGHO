@@ -50,15 +50,46 @@
                 </div>
             </div>
 
-            {{-- Fila 2: Ubicación específica y Departamento destino --}}
+            {{-- Fila 2 (Fase 2): Ubicación y equipo afectado, ligados al catálogo de Activos --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6"
+                 x-data="{ ubicacion: @js((string) old('ubicacion_id', '')), activo: @js((string) old('asset_id', '')), activos: @js($activosTicket->map(fn ($a) => ['id' => (string) $a->id, 'texto' => $a->nomenclatura . ' · ' . ($a->tipo_equipo ?: $a->nombre), 'ubicacion' => (string) $a->ubicacion_id])->values()) }">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Habitación o área</label>
+                    <select name="ubicacion_id" x-model="ubicacion" @change="if (activo && !activos.find(a => a.id === activo && (!ubicacion || a.ubicacion === ubicacion))) activo = ''"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
+                        <option value="">— No aplica / no sé —</option>
+                        @foreach($ubicacionesTicket->groupBy('tipo') as $tipo => $grupo)
+                            <optgroup label="{{ \App\Models\Ubicacion::TIPOS[$tipo] ?? $tipo }}">
+                                @foreach($grupo as $u)
+                                    <option value="{{ $u->id }}">{{ $u->etiqueta }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1 italic">Así el historial de la habitación o área queda completo.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Equipo afectado</label>
+                    <select name="asset_id" x-model="activo"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
+                        <option value="">— No aplica / no sé —</option>
+                        <template x-for="a in activos.filter(a => !ubicacion || a.ubicacion === ubicacion)" :key="a.id">
+                            <option :value="a.id" x-text="a.texto" :selected="a.id === activo"></option>
+                        </template>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1 italic">Si eliges la habitación o área, solo verás sus equipos.</p>
+                </div>
+            </div>
+
+            {{-- Fila 3: Detalle libre de ubicación y Departamento destino --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-1">Equipo o Ubicación Específica</label>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Detalle de ubicación o equipo</label>
                     <input type="text" name="descripcion_ubicacion" 
                         value="{{ old('descripcion_ubicacion') }}"
-                        placeholder="Ej: PC Recepción, Impresora Piso 2..."
+                        placeholder="Ej: impresora junto a caja 2, TV del lobby..."
                         class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 focus:outline-none focus:border-[#041b32]">
-                    <p class="text-[10px] text-slate-400 mt-1 italic">Opcional pero ayuda a atenderte más rápido.</p>
+                    <p class="text-[10px] text-slate-400 mt-1 italic">Opcional: úsalo si el equipo no aparece en la lista.</p>
                 </div>
 
                 <div>

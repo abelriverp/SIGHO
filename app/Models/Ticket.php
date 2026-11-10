@@ -19,6 +19,11 @@ class Ticket extends Model
         'departamento_destino',
         'veces_reasignado',
         'descripcion_ubicacion',
+        'asset_id',
+        'ubicacion_id',
+        'csat_calificacion',
+        'csat_comentario',
+        'csat_at',
         'descripcion',
         'campos_extra',
         'prioridad',
@@ -48,7 +53,25 @@ class Ticket extends Model
         'fecha_resolucion'   => 'datetime',
         'sla_escalado_at'    => 'datetime',
         'ultimo_recordatorio_at' => 'datetime',
+        'csat_at'            => 'datetime',
     ];
+
+    // Fase 2: activo y ubicacion afectados.
+    public function asset()
+    {
+        return $this->belongsTo(Asset::class);
+    }
+
+    public function ubicacion()
+    {
+        return $this->belongsTo(Ubicacion::class);
+    }
+
+    // Material de Inventario de Suministros usado para atender el ticket.
+    public function materiales()
+    {
+        return $this->hasMany(InventarioMovimiento::class);
+    }
 
     // Relación con el usuario que creó el ticket
     public function user()

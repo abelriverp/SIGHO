@@ -139,6 +139,21 @@
 
     <div class="bg-white overflow-hidden shadow sm:rounded-lg mb-10">
         <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="font-bold text-slate-700 text-lg">Tickets</h3>
+            <span class="text-xs text-slate-500">Últimos {{ $tickets->count() }}</span>
+        </div>
+        @forelse($tickets as $t)
+            <a href="{{ route('tickets.show', $t->id) }}" class="flex justify-between gap-4 px-6 py-3 border-b border-gray-50 hover:bg-slate-50 text-sm">
+                <span><span class="font-bold text-[#041b32]">#{{ $t->id }}</span> {{ \Illuminate\Support\Str::limit($t->descripcion, 90) }}</span>
+                <span class="text-xs text-slate-500 whitespace-nowrap">{{ $t->created_at->format('d/m/Y') }} · {{ $t->status }}</span>
+            </a>
+        @empty
+            <p class="px-6 py-6 text-sm text-slate-400">Sin tickets ligados.</p>
+        @endforelse
+    </div>
+
+    <div class="bg-white overflow-hidden shadow sm:rounded-lg mb-10">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
             <h3 class="font-bold text-slate-700 text-lg">Historial de mantenimiento</h3>
             <a href="{{ route('revisions.create', $asset->id) }}" class="bg-[#041b32] hover:opacity-90 text-white text-sm font-bold py-2 px-4 rounded shadow transition">+ Nueva revisión</a>
         </div>

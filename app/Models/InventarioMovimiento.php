@@ -12,6 +12,7 @@ class InventarioMovimiento extends Model
     protected $fillable = [
         'hotel_code',
         'inventario_item_id',
+        'ticket_id',
         'user_id',
         'tipo',
         'tipo_salida',
@@ -29,6 +30,7 @@ class InventarioMovimiento extends Model
         'solicitud_huesped' => 'Solicitud de huésped',
         'consumo_area'      => 'Consumo de área',
         'ajuste'            => 'Ajuste / merma',
+        'ticket'            => 'Usado en ticket',
     ];
 
     public function tipoSalidaLabel(): ?string
@@ -41,6 +43,11 @@ class InventarioMovimiento extends Model
         'cantidad_anterior' => 'float',
         'cantidad_nueva'    => 'float',
     ];
+
+    public function ticket()
+    {
+        return $this->belongsTo(Ticket::class);
+    }
 
     public function item()
     {

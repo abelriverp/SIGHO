@@ -9,7 +9,8 @@ use App\Http\Controllers\{
     TicketCategoriaController, SlaPoliticaController,
     GuestPortalController, PuntoQrController, AnuncioController,
     OperadorController, RecepcionController, EmailValidacionController,
-    ExtensionDeteccionController, PerfilCorreoValidacionController
+    ExtensionDeteccionController, PerfilCorreoValidacionController,
+    ConocimientoController, RespuestaPredefinidaController, TicketRecurrenteController
 };
 use App\Http\Middleware\CheckAdmin;
 
@@ -23,9 +24,12 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Portal de huésped por QR: sin login, cada habitación/unidad tiene su
 // propio enlace impredecible (ver App\Models\PuntoQr). Termina creando un
 // Ticket normal — ver GuestPortalController.
-Route::get('/qr/{token}', [GuestPortalController::class, 'show'])->name('guest.show');
-Route::post('/qr/{token}', [GuestPortalController::class, 'store'])->middleware('throttle:guest-request')->name('guest.store');
-Route::get('/qr/{token}/gracias', [GuestPortalController::class, 'gracias'])->name('guest.gracias');
+// Apagado por defecto (Fase 2, nov 2026): ver PORTAL_HUESPED en config/app.php.
+Route::middleware('portal_huesped')->group(function () {
+    Route::get('/qr/{token}', [GuestPortalController::class, 'show'])->name('guest.show');
+    Route::post('/qr/{token}', [GuestPortalController::class, 'store'])->middleware('throttle:guest-request')->name('guest.store');
+    Route::get('/qr/{token}/gracias', [GuestPortalController::class, 'gracias'])->name('guest.gracias');
+});
 
 // ==========================================
 // 🔒 RUTAS SISTEMA PROTEGIDAS (REQUIEREN LOGIN)
@@ -166,7 +170,7 @@ Route::middleware('auth')->group(function () {
 
     // Administración de puntos QR (habitaciones/unidades) para el portal
     // de huésped. Admin y Gerente, igual que categorías de tickets y SLA.
-    Route::middleware(['supervisor'])->prefix('puntos-qr')->name('puntos-qr.')->group(function () {
+    Route::middleware(['supervisor', 'portal_huesped'])->prefix('puntos-qr')->name('puntos-qr.')->group(function () {
         Route::get('/', [PuntoQrController::class, 'index'])->name('index');
         Route::get('/crear', [PuntoQrController::class, 'create'])->name('create');
         Route::post('/', [PuntoQrController::class, 'store'])->name('store');
@@ -174,6 +178,33 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{puntoQr}/estado', [PuntoQrController::class, 'toggleActivo'])->name('estado');
         Route::patch('/{puntoQr}/regenerar-token', [PuntoQrController::class, 'regenerarToken'])->name('regenerar-token');
         Route::delete('/{puntoQr}', [PuntoQrController::class, 'destroy'])->name('destroy');
+    });
+
+    // Fase 2 (nov 2026): respuestas predefinidas y mantenimiento preventivo.
+    // Antes del grupo `tickets.` por la ruta comodín /tickets/{id}.
+    Route::middleware(['modulo:gestion_tickets', 'supervisor'])->prefix('tickets')->name('tickets.')->group(function () {
+        Route::get('/respuestas', [RespuestaPredefinidaController::class, 'index'])->name('respuestas.index');
+        Route::post('/respuestas', [RespuestaPredefinidaController::class, 'store'])->name('respuestas.store');
+        Route::put('/respuestas/{respuesta}', [RespuestaPredefinidaController::class, 'update'])->name('respuestas.update');
+        Route::delete('/respuestas/{respuesta}', [RespuestaPredefinidaController::class, 'destroy'])->name('respuestas.destroy');
+
+        Route::get('/recurrentes', [TicketRecurrenteController::class, 'index'])->name('recurrentes.index');
+        Route::get('/recurrentes/crear', [TicketRecurrenteController::class, 'create'])->name('recurrentes.create');
+        Route::post('/recurrentes', [TicketRecurrenteController::class, 'store'])->name('recurrentes.store');
+        Route::get('/recurrentes/{recurrente}/editar', [TicketRecurrenteController::class, 'edit'])->name('recurrentes.edit');
+        Route::put('/recurrentes/{recurrente}', [TicketRecurrenteController::class, 'update'])->name('recurrentes.update');
+        Route::delete('/recurrentes/{recurrente}', [TicketRecurrenteController::class, 'destroy'])->name('recurrentes.destroy');
+    });
+
+    // Fase 2: base de conocimiento (lectura para todos con Tickets).
+    Route::middleware(['modulo:gestion_tickets'])->prefix('conocimiento')->name('conocimiento.')->group(function () {
+        Route::get('/', [ConocimientoController::class, 'index'])->name('index');
+        Route::get('/crear', [ConocimientoController::class, 'create'])->name('create');
+        Route::post('/', [ConocimientoController::class, 'store'])->name('store');
+        Route::get('/{articulo}', [ConocimientoController::class, 'show'])->name('show');
+        Route::get('/{articulo}/editar', [ConocimientoController::class, 'edit'])->name('edit');
+        Route::put('/{articulo}', [ConocimientoController::class, 'update'])->name('update');
+        Route::delete('/{articulo}', [ConocimientoController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware(['modulo:gestion_tickets'])->prefix('tickets')->name('tickets.')->group(function () {
@@ -198,6 +229,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/recordatorio', [TicketController::class, 'recordatorio'])->name('recordatorio');
         Route::patch('/{id}/deshacer-resolucion', [TicketController::class, 'deshacerResolucion'])->name('deshacer-resolucion');
         Route::post('/{id}/notas', [TicketController::class, 'agregarNota'])->name('notas.store');
+        Route::post('/{id}/material', [TicketController::class, 'registrarMaterial'])->name('material.store');
         Route::patch('/{ticket}/notas/{nota}/edit', [TicketController::class, 'editarNota'])->name('notas.edit');
         Route::delete('/{id}', [TicketController::class, 'destroy'])->name('destroy');
     });

@@ -91,6 +91,13 @@ return [
     'hotel_ubicacion' => env('HOTEL_UBICACION', 'Hotel Emporio, Mazatlán, Sin.'),
 
     /*
+    | Portal de huesped por QR (/qr/{token}). Apagado por decision de Abel
+    | (nov 2026): por ahora solo el personal levanta tickets. Para activarlo
+    | poner PORTAL_HUESPED=true en el .env.
+    */
+    'portal_huesped' => (bool) env('PORTAL_HUESPED', false),
+
+    /*
     | Respaldos (Fase 0, nov 2026) — ver App\Console\Commands\RespaldarSigho.
     | BACKUP_PATH: carpeta extra (ej. una carpeta compartida en otra PC) donde copiar el ZIP.
     | BACKUP_DIAS: cuantos respaldos conservar. MYSQLDUMP_PATH: ruta a mysqldump.

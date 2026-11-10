@@ -28,3 +28,7 @@ Schedule::command('tickets:resumen-pendientes')->cron('0 8 15,30 * *');
 // 02:30 (ver App\Console\Commands\RespaldarSigho). Copia externa opcional
 // con BACKUP_PATH en el .env.
 Schedule::command('sigho:respaldar')->dailyAt('02:30');
+
+// Fase 2 (nov 2026) — Mantenimiento preventivo: genera a las 06:00 los
+// tickets recurrentes que tocan hoy (ver App\Console\Commands\GenerarTicketsRecurrentes).
+Schedule::command('tickets:generar-recurrentes')->dailyAt('06:00');

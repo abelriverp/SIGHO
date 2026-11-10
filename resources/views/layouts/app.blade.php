@@ -214,6 +214,7 @@
                             <div class="absolute right-0 top-full w-48 bg-white shadow-lg rounded-b-lg border-t-2 border-[#041b32] hidden group-hover:block z-50 text-slate-600">
                                 <a href="{{ route('tickets.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Panel de Reportes</a>
                                 <a href="{{ route('tickets.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Levantar Ticket</a>
+                                <a href="{{ route('conocimiento.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📚 Base de conocimiento</a>
                                 @if($user->puedeVerTodos() || $user->isTecnico())
                                     <a href="{{ route('tickets.reportes') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📊 Reportes / Corte de KPIs</a>
                                 @endif
@@ -223,7 +224,11 @@
                                 @if($user->puedeVerTodos())
                                     <a href="{{ route('tickets.categorias.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">⚙️ Categorías de solicitud</a>
                                     <a href="{{ route('tickets.sla.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">⏱️ Política de SLA</a>
+                                    <a href="{{ route('tickets.respuestas.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">💬 Respuestas predefinidas</a>
+                                    <a href="{{ route('tickets.recurrentes.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">🔁 Mantenimiento preventivo</a>
+                                    @if(config('app.portal_huesped'))
                                     <a href="{{ route('puntos-qr.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📱 Portal de huésped (QR)</a>
+                                    @endif
                                 @endif
                             </div>
                         </div>
@@ -407,6 +412,7 @@
                         @endif
                     </a>
                     <a href="{{ route('tickets.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Levantar Ticket</a>
+                    <a href="{{ route('conocimiento.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📚 Base de conocimiento</a>
                     @if($user->puedeVerTodos() || $user->isTecnico())
                         <a href="{{ route('tickets.reportes') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📊 Reportes / Corte de KPIs</a>
                     @endif
@@ -416,7 +422,11 @@
                     @if($user->puedeVerTodos())
                         <a href="{{ route('tickets.categorias.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">⚙️ Categorías de solicitud</a>
                         <a href="{{ route('tickets.sla.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">⏱️ Política de SLA</a>
+                        <a href="{{ route('tickets.respuestas.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">💬 Respuestas predefinidas</a>
+                        <a href="{{ route('tickets.recurrentes.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">🔁 Mantenimiento preventivo</a>
+                        @if(config('app.portal_huesped'))
                         <a href="{{ route('puntos-qr.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📱 Portal de huésped (QR)</a>
+                        @endif
                     @endif
                 </div>
 

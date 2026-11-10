@@ -40,6 +40,11 @@ class Ubicacion extends Model
         return $this->hasMany(Asset::class);
     }
 
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
     public function getTipoNombreAttribute(): string
     {
         return self::TIPOS[$this->tipo] ?? ucfirst((string) $this->tipo);

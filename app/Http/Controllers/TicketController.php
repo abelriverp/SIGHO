@@ -8,6 +8,14 @@ use App\Models\User;
 use App\Models\Departamento;
 use App\Models\Operador;
 use App\Models\AuditLog;
+use App\Models\Asset;
+use App\Models\Ubicacion;
+use App\Models\ArticuloConocimiento;
+use App\Models\RespuestaPredefinida;
+use App\Models\InventarioItem;
+use App\Models\InventarioMovimiento;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Notifications\NuevoTicketNotification;
 use App\Notifications\TicketReasignadoNotification;
 use App\Notifications\TicketResueltoNotification;
@@ -331,7 +339,12 @@ class TicketController extends Controller
     {
         $catalogoPorDepartamento = \App\Models\TicketCategoria::catalogoAgrupadoPorDepartamento($this->hotelActivo());
 
-        return view('tickets.create', compact('catalogoPorDepartamento'));
+        // Fase 2: el ticket puede ligarse a una ubicación y a un activo.
+        $ubicacionesTicket = Ubicacion::where('activa', true)->orderBy('tipo')->orderBy('codigo')->get(['id', 'tipo', 'codigo', 'nombre']);
+        $activosTicket = Asset::vigentes()->orderBy('nomenclatura')
+            ->get(['id', 'nomenclatura', 'nombre', 'tipo_equipo', 'ubicacion_id']);
+
+        return view('tickets.create', compact('catalogoPorDepartamento', 'ubicacionesTicket', 'activosTicket'));
     }
 
     // ==========================================
@@ -384,6 +397,8 @@ class TicketController extends Controller
             'area'                  => $areaCuenta ? 'nullable|string|max:255' : 'required|string|max:255',
             'departamento_destino'  => ['required', 'string', Rule::in($this->departamentosValidos())],
             'descripcion_ubicacion' => 'nullable|string|max:255',
+            'ubicacion_id'          => 'nullable|integer|exists:ubicaciones,id',
+            'asset_id'              => 'nullable|integer|exists:assets,id',
             'descripcion'           => 'required|string',
             'prioridad'             => 'required|string|in:Baja,Media,Alta',
             'archivos'              => 'nullable|array|max:6',
@@ -449,7 +464,25 @@ class TicketController extends Controller
         // Solo conservar las columnas reales de la tabla + campos_extra
         $data = collect($data)->only([
             'area', 'departamento_destino', 'descripcion_ubicacion', 'descripcion', 'prioridad',
+            'ubicacion_id', 'asset_id',
         ])->toArray();
+
+        // Fase 2: ubicación y activo deben ser de esta propiedad (exists: no
+        // aplica HotelScope). Si solo se eligió el activo, se toma su ubicación.
+        $errores = [];
+        $activo = !empty($data['asset_id']) ? Asset::find($data['asset_id']) : null;
+        if (!empty($data['asset_id']) && !$activo) {
+            $errores['asset_id'] = 'Equipo no válido.';
+        }
+        if (!empty($data['ubicacion_id']) && !Ubicacion::whereKey($data['ubicacion_id'])->exists()) {
+            $errores['ubicacion_id'] = 'Ubicación no válida.';
+        }
+        if ($errores) {
+            throw ValidationException::withMessages($errores);
+        }
+        if ($activo && empty($data['ubicacion_id'])) {
+            $data['ubicacion_id'] = $activo->ubicacion_id;
+        }
 
         // La cuenta manda sobre lo que haya llegado del formulario: así el
         // valor guardado en el ticket siempre coincide con el área real del
@@ -526,7 +559,37 @@ class TicketController extends Controller
             ? Operador::deDepartamento($user->departamento)->activos()->orderBy('nombre')->get()
             : collect();
 
-        return view('tickets.show', compact('ticket', 'misOperadores', 'volverUrl'));
+        // Fase 2: base de conocimiento, respuestas predefinidas, historial
+        // del activo/ubicación y material usado.
+        $ticket->load(['asset', 'ubicacion', 'materiales.item', 'materiales.usuario']);
+        $puedeAtender = $user->puedeResponderTickets();
+
+        $articulosSugeridos = $puedeAtender ? ArticuloConocimiento::sugeridosPara($ticket) : collect();
+        $respuestas = $puedeAtender ? RespuestaPredefinida::paraDepartamento($user->isAdmin() ? $ticket->departamento_destino : $user->departamento) : collect();
+        $articulosInventario = $puedeAtender
+            ? InventarioItem::where('cantidad', '>', 0)->orderBy('nombre')->get(['id', 'nombre', 'unidad', 'cantidad'])
+            : collect();
+
+        $historialRelacionado = collect();
+        if ($puedeAtender && ($ticket->asset_id || $ticket->ubicacion_id)) {
+            $historialRelacionado = Ticket::where('id', '!=', $ticket->id)
+                ->where(function ($q) use ($ticket) {
+                    if ($ticket->asset_id) {
+                        $q->orWhere('asset_id', $ticket->asset_id);
+                    }
+                    if ($ticket->ubicacion_id) {
+                        $q->orWhere('ubicacion_id', $ticket->ubicacion_id);
+                    }
+                })
+                ->latest()
+                ->limit(8)
+                ->get(['id', 'status', 'descripcion', 'created_at', 'asset_id', 'ubicacion_id']);
+        }
+
+        return view('tickets.show', compact(
+            'ticket', 'misOperadores', 'volverUrl',
+            'articulosSugeridos', 'respuestas', 'articulosInventario', 'historialRelacionado'
+        ));
     }
 
     // ==========================================
@@ -562,6 +625,7 @@ class TicketController extends Controller
             'fotos_resolucion'   => 'nullable|array|max:4',
             'fotos_resolucion.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
             'operador_id'        => 'nullable|integer|exists:operadores,id',
+            'articulo_id'        => 'nullable|integer|exists:articulos_conocimiento,id',
         ], [
             'fotos_resolucion.*.uploaded' => 'Una de las fotos no se pudo subir porque es demasiado grande para la configuración actual del servidor.',
             'fotos_resolucion.*.max' => 'Cada foto no puede pesar más de 4 MB.',
@@ -621,6 +685,12 @@ class TicketController extends Controller
             'tipo'          => 'publica',
             'es_automatica' => true,
         ]);
+
+        // Fase 2: si la solución salió de la base de conocimiento, se cuenta
+        // como uso del artículo (sirve para ordenar sugerencias).
+        if ($request->filled('articulo_id')) {
+            ArticuloConocimiento::whereKey($request->articulo_id)->increment('usos');
+        }
 
         // Avisar a quien reportó el ticket que ya fue resuelto, para que
         // confirme la solución o lo reabra si no quedó atendido.
@@ -753,6 +823,14 @@ class TicketController extends Controller
             return back()->with('error', 'Este ticket no está pendiente de confirmación.');
         }
 
+        // Fase 2: encuesta de satisfacción (1 a 5) al confirmar.
+        $csat = $request->validate([
+            'csat_calificacion' => 'required|integer|min:1|max:5',
+            'csat_comentario'   => 'nullable|string|max:1000',
+        ], [
+            'csat_calificacion.required' => 'Califica la atención (1 a 5 estrellas) antes de confirmar.',
+        ]);
+
         $token = $this->generarToken($ticket->id, 'C', $ticket->hotel_code);
 
         $antes = $ticket->only(['status']);
@@ -763,12 +841,15 @@ class TicketController extends Controller
             'fecha_confirmacion' => now(),
             'token_confirmacion' => $token,
             'ip_confirmacion'    => $request->ip(),
+            'csat_calificacion'  => $csat['csat_calificacion'],
+            'csat_comentario'    => $csat['csat_comentario'] ?? null,
+            'csat_at'            => now(),
         ]);
 
         TicketNota::create([
             'ticket_id'     => $ticket->id,
             'user_id'       => $user->id,
-            'nota'          => 'El usuario confirmó que el problema fue solucionado satisfactoriamente. Ticket cerrado. | Token de confirmación: ' . $token,
+            'nota'          => 'El usuario confirmó que el problema fue solucionado satisfactoriamente. Ticket cerrado. Calificación: ' . $csat['csat_calificacion'] . '/5. | Token de confirmación: ' . $token,
             'tipo'          => 'publica',
             'es_automatica' => true,
         ]);
@@ -1151,6 +1232,72 @@ class TicketController extends Controller
     // deben quedar en el sistema. Borra también sus archivos
     // adjuntos y deja rastro en la bitácora de auditoría.
     // ==========================================
+    // ==========================================
+    // MATERIAL USADO (Fase 2): salida de Inventario de Suministros ligada
+    // al ticket. Misma lógica de stock que InventoryController::registrarMovimiento().
+    // ==========================================
+    public function registrarMaterial(Request $request, $id)
+    {
+        $user   = auth()->user();
+        $ticket = Ticket::findOrFail($id);
+
+        if (!$user->puedeResponderTickets() || !$user->can('view', $ticket)) {
+            abort(403, 'No tienes permiso para registrar material en este ticket.');
+        }
+
+        $data = $request->validate([
+            'inventario_item_id' => 'required|integer|exists:inventario_items,id',
+            'cantidad'           => 'required|numeric|min:0.01',
+        ]);
+
+        $resultado = DB::transaction(function () use ($data, $ticket, $user) {
+            $item = InventarioItem::lockForUpdate()->find($data['inventario_item_id']);
+            if (!$item) {
+                return 'Artículo no válido.';
+            }
+
+            $anterior = (float) $item->cantidad;
+            $delta    = (float) $data['cantidad'];
+            if ($delta > $anterior) {
+                return "No hay suficiente stock de {$item->nombre}. Disponible: {$anterior} {$item->unidad}.";
+            }
+            $nueva = $anterior - $delta;
+
+            $item->update([
+                'cantidad' => $nueva,
+                'status'   => $nueva <= 0 ? 'Agotado' : 'Disponible',
+            ]);
+
+            InventarioMovimiento::create([
+                'hotel_code'         => $item->hotel_code,
+                'inventario_item_id' => $item->id,
+                'ticket_id'          => $ticket->id,
+                'user_id'            => $user->id,
+                'tipo'               => 'salida',
+                'tipo_salida'        => 'ticket',
+                'habitacion'         => $ticket->ubicacion?->tipo === 'habitacion' ? $ticket->ubicacion->codigo : null,
+                'cantidad'           => $delta,
+                'cantidad_anterior'  => $anterior,
+                'cantidad_nueva'     => $nueva,
+                'motivo'             => "Ticket #{$ticket->id}",
+            ]);
+
+            TicketNota::create([
+                'ticket_id'     => $ticket->id,
+                'user_id'       => $user->id,
+                'nota'          => "Material usado: {$delta} {$item->unidad} de {$item->nombre}.",
+                'tipo'          => 'interna',
+                'es_automatica' => true,
+            ]);
+
+            return null;
+        });
+
+        return $resultado
+            ? back()->withErrors(['cantidad' => $resultado])->withInput()
+            : back()->with('success', 'Material registrado y descontado del inventario.');
+    }
+
     public function destroy($id)
     {
         $user = auth()->user();

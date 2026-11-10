@@ -132,6 +132,29 @@
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Área / Departamento</h4>
                     <p class="text-slate-800 font-medium">{{ $ticket->area }}</p>
                 </div>
+                @if($ticket->ubicacion || $ticket->asset)
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Habitación / área y equipo</h4>
+                    <p class="text-slate-800 font-medium">
+                        @if($ticket->ubicacion)
+                            @if(auth()->user()->tieneModulo('seguimiento_equipos_ti'))
+                                <a href="{{ route('ubicaciones.show', $ticket->ubicacion) }}" class="text-blue-800 hover:underline">{{ $ticket->ubicacion->etiqueta }}</a>
+                            @else
+                                {{ $ticket->ubicacion->etiqueta }}
+                            @endif
+                        @endif
+                        @if($ticket->ubicacion && $ticket->asset) · @endif
+                        @if($ticket->asset)
+                            @if(auth()->user()->tieneModulo('seguimiento_equipos_ti'))
+                                <a href="{{ route('assets.show', $ticket->asset->id) }}" class="font-mono text-blue-800 hover:underline">{{ $ticket->asset->nomenclatura }}</a>
+                            @else
+                                <span class="font-mono">{{ $ticket->asset->nomenclatura }}</span>
+                            @endif
+                            <span class="text-xs text-slate-500">{{ $ticket->asset->tipo_equipo }} {{ $ticket->asset->marca }} {{ $ticket->asset->modelo }}</span>
+                        @endif
+                    </p>
+                </div>
+                @endif
                 @if($ticket->descripcion_ubicacion)
                 <div>
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Equipo / Ubicación</h4>
@@ -206,6 +229,10 @@
                     <h4 class="text-xs font-bold text-green-600 uppercase tracking-wider">Confirmación del usuario</h4>
                     <p class="text-slate-700 mt-1 text-sm">✅ Problema confirmado como solucionado por {{ $ticket->user->name }}</p>
                     <p class="text-[10px] text-slate-400 mt-1 italic">{{ $ticket->fecha_confirmacion?->format('d/m/Y H:i') }}</p>
+                    @if($ticket->csat_calificacion)
+                        <p class="mt-2 text-sm"><span class="text-amber-500">{{ str_repeat('★', $ticket->csat_calificacion) }}</span><span class="text-slate-300">{{ str_repeat('★', 5 - $ticket->csat_calificacion) }}</span> <span class="text-xs text-slate-500">({{ $ticket->csat_calificacion }}/5)</span></p>
+                        @if($ticket->csat_comentario)<p class="text-xs text-slate-600 italic mt-1">"{{ $ticket->csat_comentario }}"</p>@endif
+                    @endif
                 </div>
                 @endif
 
@@ -324,6 +351,68 @@
         </div>
 
         {{-- ============================================ --}}
+        {{-- FASE 2: conocimiento, historial y material   --}}
+        {{-- ============================================ --}}
+        @if(auth()->user()->puedeResponderTickets())
+            <div class="px-6 py-5 border-t border-slate-200 grid grid-cols-1 lg:grid-cols-3 gap-6 no-print">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">📚 Base de conocimiento</h4>
+                    @forelse($articulosSugeridos as $art)
+                        <a href="{{ route('conocimiento.show', $art->id) }}" target="_blank" class="block text-sm text-blue-800 hover:underline py-1">{{ $art->titulo }}</a>
+                    @empty
+                        <p class="text-xs text-slate-400">Sin artículos para este departamento.</p>
+                    @endforelse
+                    <div class="mt-2 flex gap-3 text-xs">
+                        <a href="{{ route('conocimiento.index', ['departamento' => $ticket->departamento_destino]) }}" target="_blank" class="text-slate-500 underline">Buscar más</a>
+                        @if(in_array($ticket->status, ['Resuelto', 'Cerrado']))
+                            <a href="{{ route('conocimiento.create', ['ticket' => $ticket->id]) }}" class="text-green-700 font-bold underline">+ Convertir esta solución en artículo</a>
+                        @endif
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">🕘 Tickets anteriores de este equipo o lugar</h4>
+                    @if(!$ticket->asset_id && !$ticket->ubicacion_id)
+                        <p class="text-xs text-slate-400">El ticket no está ligado a un equipo ni a una ubicación.</p>
+                    @else
+                        @forelse($historialRelacionado as $h)
+                            <a href="{{ route('tickets.show', $h->id) }}" class="block text-xs py-1 hover:bg-slate-50 rounded">
+                                <span class="font-bold text-[#041b32]">#{{ $h->id }}</span>
+                                <span class="text-slate-400">{{ $h->created_at->format('d/m/y') }} · {{ $h->status }}</span>
+                                <span class="block text-slate-600 truncate">{{ \Illuminate\Support\Str::limit($h->descripcion, 70) }}</span>
+                            </a>
+                        @empty
+                            <p class="text-xs text-slate-400">Es el primer ticket de este equipo o lugar.</p>
+                        @endforelse
+                    @endif
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">🧰 Material usado</h4>
+                    @forelse($ticket->materiales as $m)
+                        <p class="text-xs text-slate-700 py-0.5">{{ rtrim(rtrim(number_format($m->cantidad, 2), '0'), '.') }} {{ $m->item?->unidad }} · {{ $m->item?->nombre ?? 'Artículo eliminado' }} <span class="text-slate-400">({{ $m->usuario?->name }})</span></p>
+                    @empty
+                        <p class="text-xs text-slate-400">Sin material registrado.</p>
+                    @endforelse
+                    @if($ticket->status !== 'Cerrado' && $articulosInventario->isNotEmpty())
+                        <form action="{{ route('tickets.material.store', $ticket->id) }}" method="POST" class="mt-2 flex gap-2 items-start">
+                            @csrf
+                            <select name="inventario_item_id" required class="flex-1 min-w-0 border border-slate-300 rounded text-xs p-1.5">
+                                <option value="">Artículo…</option>
+                                @foreach($articulosInventario as $it)
+                                    <option value="{{ $it->id }}">{{ $it->nombre }} ({{ rtrim(rtrim(number_format($it->cantidad, 2), '0'), '.') }} {{ $it->unidad }})</option>
+                                @endforeach
+                            </select>
+                            <input type="number" name="cantidad" step="0.01" min="0.01" value="1" required class="w-16 border border-slate-300 rounded text-xs p-1.5">
+                            <button type="submit" class="bg-[#041b32] text-white text-xs font-bold px-3 py-1.5 rounded">Usar</button>
+                        </form>
+                        @error('cantidad')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        {{-- ============================================ --}}
         {{-- BLOQUE RESOLVER (técnico/admin)              --}}
         {{-- Oculto para técnicos mientras $requiereJustificacion --}}
         {{-- sea true (ver aviso arriba) — Admin sí lo ve, puede  --}}
@@ -340,10 +429,33 @@
                     @csrf
                     @method('PATCH')
 
+                    {{-- Fase 2: respuestas predefinidas y artículo de conocimiento usado --}}
+                    @if($respuestas->isNotEmpty())
+                        <select onchange="if (this.value) { const t = this.form.querySelector('[name=notas_admin]'); t.value = (t.value ? t.value + '\n' : '') + this.value; this.value = ''; }"
+                            class="w-full border border-slate-300 rounded-lg text-xs p-2 mb-2 focus:outline-none focus:border-[#041b32]">
+                            <option value="">💬 Insertar respuesta predefinida…</option>
+                            @foreach($respuestas as $r)
+                                <option value="{{ $r->texto }}">{{ $r->titulo }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+
                     {{-- Notas de resolución --}}
                     <textarea name="notas_admin" required rows="3"
                         class="w-full border border-slate-300 rounded-lg mb-4 text-sm p-3 focus:outline-none focus:border-[#041b32]"
                         placeholder="Describe detalladamente cómo se solucionó el problema..."></textarea>
+
+                    @if($articulosSugeridos->isNotEmpty())
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">¿Te sirvió un artículo de la base de conocimiento? <span class="text-slate-400 font-normal">(opcional)</span></label>
+                            <select name="articulo_id" class="w-full border border-slate-300 rounded-lg text-sm p-2 focus:outline-none focus:border-[#041b32]">
+                                <option value="">— Ninguno —</option>
+                                @foreach($articulosSugeridos as $art)
+                                    <option value="{{ $art->id }}">{{ $art->titulo }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
 
                     {{-- Operador que ejecutó el trabajo (opcional, solo lista del propio técnico) --}}
                     @if(auth()->user()->isTecnico())
@@ -554,8 +666,20 @@
                 <h4 class="text-sm font-bold text-blue-800 mb-1">¿Tu problema fue solucionado?</h4>
                 <p class="text-xs text-blue-600 mb-4">El equipo de soporte ha registrado una solución. Por favor confirma si el problema fue resuelto satisfactoriamente.</p>
 
-                <form action="{{ route('tickets.confirmar', $ticket->id) }}" method="POST" class="mb-3">
+                <form action="{{ route('tickets.confirmar', $ticket->id) }}" method="POST" class="mb-3" x-data="{ estrellas: {{ (int) old('csat_calificacion', 0) }} }">
                     @csrf
+                    <div class="bg-white border border-blue-200 rounded-lg p-3 mb-3">
+                        <p class="text-xs font-bold text-blue-800 mb-2">¿Cómo calificas la atención?</p>
+                        <div class="flex gap-1 mb-2">
+                            @for($i = 1; $i <= 5; $i++)
+                                <label class="cursor-pointer text-3xl leading-none" :class="estrellas >= {{ $i }} ? 'text-amber-400' : 'text-slate-300'">
+                                    <input type="radio" name="csat_calificacion" value="{{ $i }}" class="sr-only" x-model.number="estrellas" required>★
+                                </label>
+                            @endfor
+                        </div>
+                        @error('csat_calificacion')<p class="text-xs text-red-600 mb-2">{{ $message }}</p>@enderror
+                        <textarea name="csat_comentario" rows="2" maxlength="1000" class="w-full border border-slate-200 rounded text-sm p-2 focus:outline-none focus:border-[#041b32]" placeholder="Comentario (opcional)">{{ old('csat_comentario') }}</textarea>
+                    </div>
                     <button type="submit"
                         onclick="return confirm('¿Confirmas que el problema fue solucionado? Al confirmar, el ticket será cerrado definitivamente.')"
                         class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">
@@ -679,6 +803,15 @@
                             <span class="text-amber-600 font-normal normal-case">— explica aquí por qué el ticket sigue en pausa</span>
                         @endif
                     </label>
+                    @if($respuestas->isNotEmpty())
+                        <select onchange="if (this.value) { const t = this.form.querySelector('[name=nota]'); t.value = (t.value ? t.value + '\n' : '') + this.value; this.value = ''; }"
+                            class="w-full border border-slate-300 rounded-lg text-xs p-2 mb-2 focus:outline-none focus:border-[#041b32]">
+                            <option value="">💬 Insertar respuesta predefinida…</option>
+                            @foreach($respuestas as $r)
+                                <option value="{{ $r->texto }}">{{ $r->titulo }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                     <textarea name="nota" required rows="2"
                         class="w-full border border-slate-300 rounded-lg text-sm p-3 mb-2 focus:outline-none focus:border-[#041b32]"
                         placeholder="Escribe una nota de seguimiento..."></textarea>

@@ -84,7 +84,10 @@ class UbicacionController extends Controller
     {
         $ubicacion->load(['activos' => fn ($q) => $q->with(['padre:id,nomenclatura', 'asignado:id,name'])->orderBy('categoria')->orderBy('nomenclatura')]);
 
-        return view('ubicaciones.show', compact('ubicacion'));
+        $tickets = \App\Models\Ticket::where('ubicacion_id', $ubicacion->id)
+            ->latest()->limit(15)->get(['id', 'status', 'descripcion', 'created_at', 'asset_id', 'prioridad']);
+
+        return view('ubicaciones.show', compact('ubicacion', 'tickets'));
     }
 
     public function edit(Ubicacion $ubicacion)
