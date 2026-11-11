@@ -332,3 +332,6 @@ Todo vive dentro del módulo `seguimiento_equipos_ti` (menú Activos). Permisos 
 - **API REST v1** (`routes/api.php`, `/api/v1`): `Authorization: Bearer sigho_…`, 60 peticiones por minuto. Endpoints: `GET activos`, `GET activos/{nomenclatura}`, `GET tickets`, `POST tickets` (requiere token con escritura), `GET monitoreo`, `GET kpis`.
   - Tokens en `api_tokens` (solo hash sha256 y un prefijo visible), administrados en Admin → Tokens de API. El token se muestra **una sola vez**. Actúa como el usuario asignado (sus permisos y su propiedad), puede vencer y registra último uso.
 - Tests: `tests/Feature/GestionFase5Test.php` (17 casos). Suite: 186 pruebas en SQLite.
+
+### Bug: 405 en la raíz con rutas en caché (2026-11-10)
+Con `artisan optimize` (rutas en caché) y SIGHO en subcarpeta, `GET /SIGHO/public/` responde 405 "Supported methods: HEAD": el matcher compilado de Laravel recorta la diagonal final y la ruta `/` deja de coincidir con GET. El resto de las URLs funcionan. No se quita la caché: `public/.htaccess` redirige la raíz a `login` (que lleva al dashboard si ya hay sesión). Era el mismo 405 que se veía tras instalar y que se "arreglaba" con `optimize:clear`.

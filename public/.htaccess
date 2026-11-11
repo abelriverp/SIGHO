@@ -13,6 +13,12 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
+    # SIGHO: con las rutas en cache (artisan optimize), Laravel instalado en
+    # subcarpeta responde 405 en la raiz /SIGHO/public/. Se manda al login,
+    # que a su vez lleva al dashboard si ya hay sesion.
+    RewriteCond %{REQUEST_URI} /$
+    RewriteRule ^$ %{REQUEST_URI}login [R=302,L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
