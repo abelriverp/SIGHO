@@ -335,3 +335,24 @@ Todo vive dentro del módulo `seguimiento_equipos_ti` (menú Activos). Permisos 
 
 ### Bug: 405 en la raíz con rutas en caché (2026-11-10)
 Con `artisan optimize` (rutas en caché) y SIGHO en subcarpeta, `GET /SIGHO/public/` responde 405 "Supported methods: HEAD": el matcher compilado de Laravel recorta la diagonal final y la ruta `/` deja de coincidir con GET. El resto de las URLs funcionan. No se quita la caché: `public/.htaccess` redirige la raíz a `login` (que lleva al dashboard si ya hay sesión). Era el mismo 405 que se veía tras instalar y que se "arreglaba" con `optimize:clear`.
+
+## 22. Endurecimiento de seguridad (2026-11-10)
+
+Auditoría propia. Hallazgos y lo que se hizo:
+
+- **Archivos subidos sin login** (alto): fotos de tickets, contratos, dictámenes y PDFs de activos vivían en el disco `public` y se abrían en `/storage/...` con solo tener el enlace. Ahora `public/.htaccess` responde 403 a `/storage/` y `Storage::url()` apunta a `/archivos/{ruta}` (`ArchivoController`, dentro del grupo `auth`). Rechaza `..`, rutas absolutas y archivos ocultos; imágenes, PDF y video se muestran en línea y el resto se descarga. `AppServiceProvider` arma la URL con el host de la petición. Las fotos en `tickets/show` usaban `asset('storage/...')` y se cambiaron a `Storage::url()`.
+- **Cabeceras** (`CabecerasSeguridad`, global): `X-Frame-Options: SAMEORIGIN`, `nosniff`, `Referrer-Policy: same-origin`, `Permissions-Policy`, COOP y una CSP mínima (`frame-ancestors`, `object-src`, `base-uri`, `form-action`). La CSP no restringe scripts porque Alpine necesita eval y hay scripts en línea. Se quita `X-Powered-By`, y con sesión iniciada se manda `Cache-Control: no-store` (en PCs compartidas, "atrás" tras cerrar sesión ya no muestra datos).
+- **Contraseñas**: `Password::defaults()` exige mínimo 8 caracteres con letras y números (antes 6). Aplica en alta y edición de usuarios y en el cambio propio. El generador del admin hace 10 caracteres con `crypto.getRandomValues`.
+  - Cambiar la propia contraseña pide la actual, salvo en el cambio obligatorio del primer ingreso, y la nueva debe ser distinta.
+  - `User::cerrarSesiones()` borra las otras sesiones del usuario al cambiar su contraseña, o cuando el admin le cambia contraseña o rol.
+- **Login**: además de 5 por minuto por correo+IP, tope de 30 intentos en 15 minutos por IP (frena probar muchas cuentas desde una PC). Éxitos (`login.exitoso`) y fallos (`login.fallido`, con motivo e IP) quedan en la Bitácora.
+- **Exportar CSV de activos**: las celdas que empiezan con `= + - @` (o tab o retorno) se prefijan con `'` para que Excel no las ejecute como fórmula.
+- **Respaldo**: `mysqldump --no-tablespaces`, para funcionar con un usuario de MySQL sin privilegio PROCESS.
+- **Servidor** (`ENDURECER_SERVIDOR.bat` + `endurecer-servidor.ps1`, respaldan cada archivo como `.antes-seguridad`):
+  - Apache con `ServerTokens Prod`, `ServerSignature Off` y `TraceEnable Off`; PHP con `expose_php` y `display_errors` en Off.
+  - MySQL con `bind-address=127.0.0.1`: antes escuchaba en toda la red.
+  - Usuario MySQL `sigho` con contraseña aleatoria y permisos solo sobre la base `sigho`, en lugar de `root` sin contraseña. Si la prueba de conexión falla, regresa el `.env` anterior.
+  - Las páginas demo de XAMPP (`dashboard` con phpinfo, `xampp`, `webalizer`) se mueven a `C:\xampp\htdocs_demo_respaldo`, y la raíz del servidor manda al login. Al final corre `composer audit` (desde la nube no hubo acceso a las bases de vulnerabilidades).
+- phpMyAdmin ya estaba restringido a `Require local`. `APP_DEBUG=false` y `APP_ENV=production` ya estaban bien.
+- Pendiente de infraestructura: HTTPS (requiere certificado interno o nombre DNS), contraseña para `root` de MySQL (rompe la config por defecto de phpMyAdmin) y activar Dependabot alerts en GitHub.
+- Tests: `tests/Feature/SeguridadTest.php` (8 casos). Suite: 194 pruebas.

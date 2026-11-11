@@ -566,7 +566,9 @@ class AssetController extends Controller
                         default                             => $a->{$col},
                     };
                 }
-                fputcsv($f, $fila);
+                // Endurecimiento (nov 2026): una celda que empieza con = + - @
+                // la ejecuta Excel como fórmula (inyección CSV). Se antepone '.
+                fputcsv($f, array_map(fn ($v) => is_string($v) && $v !== '' && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'" . $v : $v, $fila));
             }
             fclose($f);
         }, "Activos_{$hotel}_" . now()->format('Ymd') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);

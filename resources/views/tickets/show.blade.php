@@ -327,8 +327,8 @@
                     <div class="grid grid-cols-2 gap-2">
                         @foreach($ticket->fotos_resolucion as $foto)
                         <div class="relative border border-slate-200 rounded-lg overflow-hidden bg-slate-50 aspect-video cursor-pointer hover:opacity-90 transition"
-                             onclick="document.getElementById('modal-img').src='{{ asset('storage/' . $foto) }}'; document.getElementById('img-modal').classList.remove('hidden')">
-                            <img src="{{ asset('storage/' . $foto) }}"
+                             onclick="document.getElementById('modal-img').src='{{ Storage::url($foto) }}'; document.getElementById('img-modal').classList.remove('hidden')">
+                            <img src="{{ Storage::url($foto) }}"
                                  class="w-full h-full object-cover"
                                  alt="Foto resolución {{ $loop->iteration }}">
                             <span class="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">
@@ -875,7 +875,7 @@
         @foreach($fotosImpresion as $idx => $foto)
         <div class="print-foto-celda">
             @if($foto)
-                <img src="{{ asset('storage/' . $foto) }}" alt="Foto {{ $idx + 1 }}">
+                <img src="{{ Storage::url($foto) }}" alt="Foto {{ $idx + 1 }}">
                 <p class="print-foto-label">Foto {{ $idx + 1 }} de {{ count($ticket->fotos_resolucion) }}</p>
             @else
                 <p class="print-foto-vacia">— Sin imagen —</p>

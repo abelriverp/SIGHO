@@ -40,26 +40,31 @@
             <!-- Manejo de Errores -->
             @if ($errors->any())
                 <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-2 rounded-lg mb-4 text-xs">
-                    <strong>¡Error!</strong> Las contraseñas no coinciden o no cumplen con los requisitos.
+                    @foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach
                 </div>
             @endif
 
             <form action="{{ route('password.change.update') }}" method="POST">
                 @csrf 
-                
+
+                @if (! auth()->user()->must_change_password)
+                <div class="mb-4">
+                    <label class="block text-gray-500 text-xs font-bold mb-1 uppercase tracking-wide">Contraseña actual</label>
+                    <input type="password" name="password_actual" autocomplete="current-password"
+                        class="w-full bg-gray-100 text-gray-700 border border-gray-200 rounded-lg py-2.5 px-4 focus:outline-none focus:bg-white focus:border-slate-800 transition-colors" required>
+                </div>
+                @endif
+
                 <div class="mb-4">
                     <label class="block text-gray-500 text-xs font-bold mb-1 uppercase tracking-wide">Nueva Contraseña</label>
-                    <input type="password" name="password" 
-                        placeholder="Mínimo 6 caracteres" 
+                    <input type="password" name="password" autocomplete="new-password" minlength="8"
+                        placeholder="Mínimo 8, con letras y números" 
                         class="w-full bg-gray-100 text-gray-700 border border-gray-200 rounded-lg py-2.5 px-4 focus:outline-none focus:bg-white focus:border-slate-800 transition-colors" required>
-                    @error('password')
-                        <span class="text-red-500 text-[11px] italic mt-0.5 block">{{ $message }}</span>
-                    @enderror
                 </div>
 
                 <div class="mb-6">
                     <label class="block text-gray-500 text-xs font-bold mb-1 uppercase tracking-wide">Confirmar Nueva Contraseña</label>
-                    <input type="password" name="password_confirmation" 
+                    <input type="password" name="password_confirmation" autocomplete="new-password" 
                         placeholder="Repite tu contraseña exactamente" 
                         class="w-full bg-gray-100 text-gray-700 border border-gray-200 rounded-lg py-2.5 px-4 focus:outline-none focus:bg-white focus:border-slate-800 transition-colors" required>
                 </div>

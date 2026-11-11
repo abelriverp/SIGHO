@@ -37,7 +37,7 @@ class AdminSettingsController extends Controller
             'name'         => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
             'usuario_ad'   => 'nullable|string|max:100|unique:users,usuario_ad',
-            'password'     => 'required|string|min:6',
+            'password'     => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults()],
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
             'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
             'area'         => 'nullable|string|exists:areas,nombre',
@@ -86,7 +86,7 @@ class AdminSettingsController extends Controller
             'role'         => 'required|in:admin,usuario,tecnico,gerente',
             'departamento' => 'nullable|string|required_if:role,tecnico|exists:departamentos,nombre',
             'area'         => 'nullable|string|exists:areas,nombre',
-            'password'     => 'nullable|string|min:6',
+            'password'     => ['nullable', 'string', \Illuminate\Validation\Rules\Password::defaults()],
             'hotel_code'   => 'nullable|string|required_unless:role,admin|exists:hoteles,hotel_code',
         ]);
 
@@ -117,6 +117,12 @@ class AdminSettingsController extends Controller
         }
 
         $user->update($data);
+
+        // Endurecimiento (nov 2026): al cambiar contraseña o rol se cierran
+        // las sesiones abiertas de ese usuario, para que el cambio aplique ya.
+        if ($cambioPassword || $antes['role'] !== $user->role) {
+            $user->cerrarSesiones($request->session()->getId());
+        }
 
         $despues = $user->fresh()->only(['name', 'email', 'role', 'hotel_code', 'departamento', 'area']);
 

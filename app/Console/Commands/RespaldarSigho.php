@@ -57,6 +57,7 @@ class RespaldarSigho extends Command
             '--port=' . ($db['port'] ?? '3306'),
             '--user=' . ($db['username'] ?? 'root'),
             '--single-transaction',
+            '--no-tablespaces', // usuario dedicado sin privilegio PROCESS (endurecimiento nov 2026)
             '--routines',
             '--default-character-set=utf8mb4',
             '--result-file=' . $sqlPath,

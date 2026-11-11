@@ -113,6 +113,21 @@ class User extends Authenticatable
         return in_array($this->role, ['admin', 'gerente']);
     }
 
+    /**
+     * Cierra las sesiones abiertas de este usuario en otras PCs (endurecimiento
+     * nov 2026), p. ej. al cambiar su contraseña o su rol. Las sesiones viven
+     * en la tabla `sessions` (SESSION_DRIVER=database).
+     */
+    public function cerrarSesiones(?string $excepto = null): void
+    {
+        $tabla = config('session.table', 'sessions');
+        if (! \Illuminate\Support\Facades\Schema::hasTable($tabla)) {
+            return;
+        }
+        \Illuminate\Support\Facades\DB::table($tabla)->where('user_id', $this->id)
+            ->when($excepto, fn ($q) => $q->where('id', '!=', $excepto))->delete();
+    }
+
     // ==========================================
     // PORTAL DE HUÉSPED (QR)
     // ==========================================

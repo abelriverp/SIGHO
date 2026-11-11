@@ -35,7 +35,7 @@
                     {{ isset($user) ? 'Nueva Contraseña (dejar en blanco para no cambiar)' : 'Contraseña Temporal' }}
                 </label>
                 <div class="flex gap-2">
-                    <input type="password" id="campo-password" name="password" {{ isset($user) ? '' : 'required' }} minlength="6"
+                    <input type="password" id="campo-password" name="password" {{ isset($user) ? '' : 'required' }} minlength="8"
                         autocomplete="new-password"
                         class="w-full bg-slate-50 border border-slate-300 rounded-md py-2 px-3 font-mono">
                     <button type="button" onclick="togglePasswordVisible()"
@@ -135,13 +135,18 @@
 </div>
 
 <script>
-    // Genera 6 letras al azar (mayúsculas y minúsculas) y las coloca en el campo de contraseña
+    // Genera una contraseña temporal segura y la coloca en el campo de contraseña
     function generarPasswordAleatoria() {
+        // 10 caracteres con letras y al menos 2 números (política: mín. 8, letras y números).
+        // Sin O/0, l/1/I para que se pueda dictar sin confusiones.
         const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
-        let pass = '';
-        for (let i = 0; i < 6; i++) {
-            pass += letras.charAt(Math.floor(Math.random() * letras.length));
-        }
+        const numeros = '23456789';
+        const azar = (n) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
+        let chars = [];
+        for (let i = 0; i < 8; i++) chars.push(letras.charAt(azar(letras.length)));
+        for (let i = 0; i < 2; i++) chars.push(numeros.charAt(azar(numeros.length)));
+        for (let i = chars.length - 1; i > 0; i--) { const j = azar(i + 1); [chars[i], chars[j]] = [chars[j], chars[i]]; }
+        const pass = chars.join('');
 
         const campo = document.getElementById('campo-password');
         campo.value = pass;

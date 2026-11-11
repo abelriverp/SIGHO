@@ -41,7 +41,9 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL'), '/').'/storage',
+            // Endurecimiento (nov 2026): los archivos se sirven por /archivos con login
+            // (ArchivoController); /storage está bloqueado en public/.htaccess.
+            'url' => rtrim(env('APP_URL'), '/').'/archivos',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

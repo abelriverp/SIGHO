@@ -33,6 +33,15 @@ class AppServiceProvider extends ServiceProvider
         // no se vuelva a desincronizar si el locale de la app cambia.
         Carbon::setLocale(config('app.locale'));
 
+        // Los enlaces a archivos subidos usan el mismo host con el que se
+        // entró (IP o nombre), no solo APP_URL.
+        if (! $this->app->runningInConsole()) {
+            config(['filesystems.disks.public.url' => url('/archivos')]);
+        }
+
+        // Contraseñas: mínimo 8 caracteres con letras y números (antes 6 letras).
+        \Illuminate\Validation\Rules\Password::defaults(fn () => \Illuminate\Validation\Rules\Password::min(8)->letters()->numbers());
+
         // Límite de intentos de login: por email+IP (no solo por IP) para que
         // un atacante no pueda "repartir" intentos entre varias IPs sin límite,
         // y para que un vecino en la misma red/oficina no se vea bloqueado por
@@ -40,11 +49,16 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', function ($request) {
             $llave = strtolower((string) $request->input('email')) . '|' . $request->ip();
 
-            return Limit::perMinute(5)->by($llave)->response(function ($request, array $headers) {
-                return back()
-                    ->withErrors(['email' => 'Demasiados intentos. Espera un minuto antes de volver a intentarlo.'])
-                    ->onlyInput('email');
-            });
+            $respuesta = fn ($request, array $headers) => back()
+                ->withErrors(['email' => 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.'])
+                ->onlyInput('email');
+
+            // Además, tope por IP (endurecimiento nov 2026): impide probar
+            // muchas cuentas distintas desde una misma PC.
+            return [
+                Limit::perMinute(5)->by($llave)->response($respuesta),
+                Limit::perMinutes(15, 30)->by('ip|' . $request->ip())->response($respuesta),
+            ];
         });
 
         // Portal de huésped por QR (sin login, ver GuestPortalController):

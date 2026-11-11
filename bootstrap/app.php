@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Middleware global web
+        // Endurecimiento (nov 2026): cabeceras de seguridad en web y API.
+        $middleware->append(\App\Http\Middleware\CabecerasSeguridad::class);
+
         $middleware->appendToGroup('web', ForcePasswordChange::class);
 
         // Aliases para usar en rutas con parámetros

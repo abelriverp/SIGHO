@@ -42,7 +42,7 @@ class AuthController extends Controller
                 return $this->entrar($request, $user);
             }
             if ($resultado === DirectorioActivo::RECHAZADO) {
-                return $this->fallo();
+                return $this->fallo($identificador, 'Active Directory rechazó la contraseña');
             }
             Log::warning('Active Directory sin respuesta; se intenta contraseña local.', ['user_id' => $user->id]);
         }
@@ -51,7 +51,7 @@ class AuthController extends Controller
             return $this->entrar($request, Auth::user(), false);
         }
 
-        return $this->fallo();
+        return $this->fallo($identificador, $user ? 'contraseña incorrecta' : 'usuario no existe');
     }
 
     private function entrar(Request $request, User $user, bool $loguear = true)
@@ -60,6 +60,7 @@ class AuthController extends Controller
             Auth::login($user);
         }
         $request->session()->regenerate();
+        \App\Models\AuditLog::registrar('login.exitoso', "{$user->name} inició sesión.", $user);
 
         // Quien entra con AD no maneja contraseña local.
         if ($user->must_change_password && ! $user->isAdmin() && ! ($user->usuario_ad && app(DirectorioActivo::class)->habilitado())) {
@@ -69,8 +70,12 @@ class AuthController extends Controller
         return redirect()->route('dashboard');
     }
 
-    private function fallo()
+    private function fallo(string $identificador = '', string $motivo = '')
     {
+        // Endurecimiento (nov 2026): los intentos fallidos quedan en bitácora
+        // con IP, para detectar a alguien probando contraseñas.
+        \App\Models\AuditLog::registrar('login.fallido', 'Intento fallido para "' . mb_substr($identificador, 0, 100) . '"' . ($motivo ? " ({$motivo})." : '.'));
+
         return back()->withErrors([
             'email' => 'Las credenciales no coinciden con nuestros registros.',
         ])->onlyInput('email');

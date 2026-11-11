@@ -38,6 +38,10 @@ Route::middleware('portal_huesped')->group(function () {
 // ==========================================
 Route::middleware('auth')->group(function () {
 
+    // 📎 Archivos subidos: solo con sesión (antes se abrían sin login en /storage)
+    Route::get('/archivos/{ruta}', [\App\Http\Controllers\ArchivoController::class, 'mostrar'])
+        ->where('ruta', '.*')->name('archivos.mostrar');
+
     // 🏠 Pantalla de Inicio
     Route::get('/', function () {
         $user = auth()->user();
