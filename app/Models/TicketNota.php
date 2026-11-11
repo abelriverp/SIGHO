@@ -22,6 +22,25 @@ class TicketNota extends Model
         'editado_at'    => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        // Fase 6: la primera nota manual de soporte (no de quien reportó)
+        // marca la primera respuesta del ticket.
+        static::created(function (TicketNota $n) {
+            if ($n->es_automatica) {
+                return;
+            }
+            $t = Ticket::withoutGlobalScopes()->find($n->ticket_id);
+            if (! $t || $t->primera_respuesta_at || $t->user_id === $n->user_id) {
+                return;
+            }
+            $autor = User::find($n->user_id);
+            if ($autor && ($autor->puedeResponderTickets() || $autor->puedeVerTodos())) {
+                $t->forceFill(['primera_respuesta_at' => $n->created_at ?? now()])->saveQuietly();
+            }
+        });
+    }
+
     // ==========================================
     // RELACIONES
     // ==========================================

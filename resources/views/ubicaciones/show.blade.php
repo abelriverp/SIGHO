@@ -19,6 +19,10 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('assets.create', ['ubicacion_id' => $ubicacion->id]) }}" class="bg-[#041b32] text-white text-sm font-bold py-2 px-4 rounded shadow">+ Activo aquí</a>
+            <a href="{{ route('assets.etiquetas', ['ubicacion_id' => $ubicacion->id]) }}" target="_blank" class="border border-slate-300 text-slate-700 text-sm font-bold py-2 px-4 rounded">🏷️ Etiquetas QR</a>
+            @if($ubicacion->tipo === 'site')
+                <a href="{{ route('network.rack', $ubicacion) }}" class="border border-slate-300 text-slate-700 text-sm font-bold py-2 px-4 rounded">🗄️ Vista de rack</a>
+            @endif
             <a href="{{ route('ubicaciones.edit', $ubicacion) }}" class="border border-slate-300 text-slate-700 text-sm font-bold py-2 px-4 rounded">Editar</a>
             @can('delete', $ubicacion)
                 <form method="POST" action="{{ route('ubicaciones.destroy', $ubicacion) }}" onsubmit="return confirm('¿Eliminar {{ $ubicacion->etiqueta }}?');">

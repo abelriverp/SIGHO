@@ -110,6 +110,7 @@
         </select>
         <input type="text" name="division" placeholder="Nueva división" class="{{ $sel }}">
         <button type="submit" class="bg-[#041b32] text-white font-bold py-2 px-4 rounded-md text-sm">Aplicar</button>
+        <a :href="'{{ route('assets.etiquetas') }}?' + seleccion.map(i => 'ids[]=' + i).join('&')" target="_blank" class="bg-white border border-blue-300 text-blue-900 text-sm font-bold py-2 px-3 rounded">🏷️ Imprimir etiquetas QR</a>
         <button type="button" @click="seleccion = []" class="text-sm text-slate-600 underline py-2">Cancelar</button>
     </form>
 

@@ -21,6 +21,12 @@ class Proveedor extends Model
         return $this->hasMany(Contrato::class);
     }
 
+    // Fase 6: tickets escalados a este proveedor.
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
     public function licencias()
     {
         return $this->hasMany(Licencia::class);

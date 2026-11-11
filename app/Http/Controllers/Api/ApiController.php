@@ -136,11 +136,12 @@ class ApiController extends Controller
                 'creados' => $t['tickets']['creados'], 'resueltos' => $t['tickets']['resueltos'],
                 'sla_pct' => $t['tickets']['slaPorcentaje'], 'mttr_horas' => $t['mttr'],
                 'csat' => $t['tickets']['calidad']['csatPromedio'], 'reabiertos_pct' => $t['tickets']['calidad']['reaperturaPct'],
+                'primera_respuesta_min' => $t['tickets']['calidad']['primeraRespuestaMin'],
                 'pendientes' => $t['backlogTotal'],
             ],
             'activos'        => ['total' => $t['activosTotal'], 'por_estado' => $t['activosPorEstado'], 'valor_mxn' => $t['valorActivos']],
             'monitoreo'      => ['equipos' => $t['monitoreados'], 'caidas' => $t['caidas'], 'disponibilidad_pct' => $t['disponibilidad'], 'caidos_ahora' => $t['caidosAhora']],
-            'contratos'      => ['gasto_anual_mxn' => $t['gastoAnual']],
+            'contratos'      => ['gasto_anual_mxn' => $t['gastoAnual'], 'costo_ti_mes_mxn' => $t['costoTiMes'], 'costo_por_cuarto_noche' => $t['costoPorCuartoNoche']],
             'problemas'      => ['abiertos' => $t['problemasAbiertos']],
         ];
     }

@@ -39,7 +39,7 @@
     </td>
     <td class="col"><b>Tiempo de solución por prioridad</b>
         <table class="lista">@forelse($t['mttrPorPrioridad'] as $p => $h)<tr><td>{{ $p }}</td><td class="r">{{ $h }} h</td></tr>@empty<tr><td>Sin tickets resueltos</td></tr>@endforelse</table>
-        <div style="color:#64748b;margin-top:3px">Reabiertos: {{ $fmt($c['reaperturaPct'] ?? null, '%') }} · Encuestas: {{ $c['csatRespuestas'] ?? 0 }}</div>
+        <div style="color:#64748b;margin-top:3px">Primera respuesta: {{ \App\Services\DashboardMetricsService::duracion($c['primeraRespuestaMin'] ?? null) }} · Reabiertos: {{ $fmt($c['reaperturaPct'] ?? null, '%') }} · Encuestas: {{ $c['csatRespuestas'] ?? 0 }}</div>
     </td>
     <td class="col"><b>Equipos con más fallas</b>
         <table class="lista">@forelse(array_slice($k['topActivos'] ?? [], 0, 5) as $a)<tr><td>{{ $a['etiqueta'] }}</td><td class="r">{{ $a['total'] }}</td></tr>@empty<tr><td>—</td></tr>@endforelse</table>
@@ -78,6 +78,7 @@
     </td>
     <td class="col"><b>Costos y vencimientos</b>
         <div style="margin:3px 0">Gasto anual en contratos: <b>${{ number_format($t['gastoAnual'], 0) }} MXN</b></div>
+        <div style="margin:3px 0">Costo de TI del mes: <b>${{ number_format($t['costoTiMes'], 0) }}</b>{{ $t['costoPorCuartoNoche'] !== null ? ' · $'.number_format($t['costoPorCuartoNoche'], 2).' por cuarto-noche ('.number_format($t['cuartosNoche']).' ocupados)' : '' }}</div>
         <table class="lista">@forelse($t['vencimientos'] as $v)<tr><td>{{ $v['tipo'] }}: {{ $v['nombre'] }}</td><td class="r">{{ $v['dias'] }} d</td></tr>@empty<tr><td>Nada vence en 90 días</td></tr>@endforelse</table>
     </td>
 </tr></table>

@@ -573,4 +573,21 @@ class AssetController extends Controller
             fclose($f);
         }, "Activos_{$hotel}_" . now()->format('Ymd') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
+
+    /**
+     * Fase 6: hoja de etiquetas QR para imprimir. El QR abre la ficha del
+     * activo (historial, tickets abiertos y botón "Reportar falla").
+     * ?ids[]=1&ids[]=2 o ?ubicacion_id=5 (todo lo vigente de esa ubicación).
+     */
+    public function etiquetas(Request $request)
+    {
+        $ids = collect((array) $request->query('ids', []))->map(fn ($v) => (int) $v)->filter()->take(200);
+        $activos = Asset::with('ubicacion')
+            ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('id', $ids))
+            ->when($ids->isEmpty() && $request->filled('ubicacion_id'), fn ($q) => $q->vigentes()->where('ubicacion_id', $request->integer('ubicacion_id')))
+            ->when($ids->isEmpty() && ! $request->filled('ubicacion_id'), fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('nomenclatura')->get();
+
+        return view('assets.etiquetas', ['activos' => $activos]);
+    }
 }

@@ -42,6 +42,12 @@ class Ticket extends Model
         'token_confirmacion',
         'ip_resolucion',
         'ip_confirmacion',
+        // Fase 6
+        'primera_respuesta_at',
+        'ticket_padre_id',
+        'proveedor_id',
+        'escalado_proveedor_at',
+        'folio_proveedor',
     ];
 
     protected $casts = [
@@ -54,7 +60,42 @@ class Ticket extends Model
         'sla_escalado_at'    => 'datetime',
         'ultimo_recordatorio_at' => 'datetime',
         'csat_at'            => 'datetime',
+        'primera_respuesta_at'  => 'datetime',
+        'escalado_proveedor_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // Fase 6: al resolverse sin una respuesta previa, la resolución
+        // cuenta como primera respuesta (KPI tiempo a primera respuesta).
+        static::saving(function (Ticket $t) {
+            if ($t->fecha_resolucion && ! $t->primera_respuesta_at) {
+                $t->primera_respuesta_at = $t->fecha_resolucion;
+            }
+        });
+    }
+
+    // Fase 6: agrupación padre/hijo (una caída genera muchos reportes).
+    public function padre()
+    {
+        return $this->belongsTo(Ticket::class, 'ticket_padre_id');
+    }
+
+    public function hijos()
+    {
+        return $this->hasMany(Ticket::class, 'ticket_padre_id');
+    }
+
+    // Fase 6: escalado a un proveedor externo.
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class);
+    }
+
+    public function abierto(): bool
+    {
+        return in_array($this->status, ['Abierto', 'Reabierto'], true);
+    }
 
     // Fase 2: activo y ubicacion afectados.
     public function asset()

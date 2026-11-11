@@ -93,7 +93,7 @@ class DashboardMetricsService
 
         $tickets = $this->ticketsVisibles($user, $hotelActivo)
             ->get(['id', 'status', 'departamento_destino', 'resolved_by', 'operador_id', 'created_at', 'fecha_resolucion',
-                   'asset_id', 'ubicacion_id', 'veces_reasignado', 'motivo_reapertura', 'csat_calificacion', 'csat_at']);
+                   'asset_id', 'ubicacion_id', 'veces_reasignado', 'motivo_reapertura', 'csat_calificacion', 'csat_at', 'primera_respuesta_at']);
 
         $creados = $tickets->filter(
             fn ($t) => $t->created_at && $t->created_at->between($desde, $hasta)
@@ -147,11 +147,17 @@ class DashboardMetricsService
         $encuestas = $todos->filter(fn ($t) => $t->csat_calificacion && $t->csat_at && $t->csat_at->between($desde, $hasta));
         $total = $resueltos->count();
 
+        // Fase 6: tiempo a primera respuesta de los tickets creados en el rango.
+        $conRespuesta = $todos->filter(fn ($t) => $t->created_at && $t->created_at->between($desde, $hasta) && $t->primera_respuesta_at);
+        $minutos = $conRespuesta->map(fn ($t) => max(0, $t->created_at->diffInMinutes($t->primera_respuesta_at)));
+
         return [
             'csatPromedio'       => $encuestas->isEmpty() ? null : round($encuestas->avg('csat_calificacion'), 2),
             'csatRespuestas'     => $encuestas->count(),
             'reaperturaPct'      => $total ? round($resueltos->filter(fn ($t) => filled($t->motivo_reapertura))->count() / $total * 100, 1) : null,
             'sinReasignarPct'    => $total ? round($resueltos->filter(fn ($t) => (int) $t->veces_reasignado === 0)->count() / $total * 100, 1) : null,
+            'primeraRespuestaMin'=> $minutos->isEmpty() ? null : (int) round($minutos->avg()),
+            'primeraRespuesta30Pct' => $minutos->isEmpty() ? null : round($minutos->filter(fn ($m) => $m <= 30)->count() / $minutos->count() * 100, 1),
         ];
     }
 
@@ -447,5 +453,20 @@ class DashboardMetricsService
         }
 
         return 'rojo';
+    }
+
+    /** Fase 6: minutos a texto corto ("25 min", "3 h 10 min", "2 d 4 h"). */
+    public static function duracion(?int $min): string
+    {
+        if ($min === null) {
+            return '—';
+        }
+        if ($min < 60) {
+            return $min . ' min';
+        }
+        if ($min < 1440) {
+            return intdiv($min, 60) . ' h' . ($min % 60 ? ' ' . ($min % 60) . ' min' : '');
+        }
+        return intdiv($min, 1440) . ' d' . (intdiv($min % 1440, 60) ? ' ' . intdiv($min % 1440, 60) . ' h' : '');
     }
 }

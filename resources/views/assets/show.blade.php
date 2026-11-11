@@ -24,6 +24,8 @@
         </div>
         <div class="flex flex-wrap gap-2 items-center">
             <span class="py-1 px-3 rounded-full text-sm font-bold {{ $badgeEstado[$asset->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $asset->status }}</span>
+            <a href="{{ route('tickets.create', ['asset_id' => $asset->id, 'ubicacion_id' => $asset->ubicacion_id]) }}" class="bg-red-600 text-white text-sm font-bold py-2 px-4 rounded shadow">⚠ Reportar falla</a>
+            <a href="{{ route('assets.etiquetas', ['ids' => [$asset->id]]) }}" target="_blank" class="border border-slate-300 text-slate-700 text-sm font-bold py-2 px-4 rounded">🏷️ Etiqueta QR</a>
             <a href="{{ route('assets.edit', $asset->id) }}" class="bg-[#041b32] text-white text-sm font-bold py-2 px-4 rounded shadow">Editar</a>
             @if($asset->asignado || $asset->encargado)
                 <a href="{{ route('assets.responsiva', $asset->id) }}" class="border border-slate-300 text-slate-700 text-sm font-bold py-2 px-4 rounded">Carta responsiva</a>

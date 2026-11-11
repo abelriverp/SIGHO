@@ -43,4 +43,21 @@ class DireccionController extends Controller
             ->setPaper('letter')
             ->download("Reporte_TI_{$hotel}_{$mes}.pdf");
     }
+
+    /** Fase 6: captura de cuartos-noche ocupados del mes (del reporte de Opera). */
+    public function ocupacion(Request $request)
+    {
+        $data = $request->validate([
+            'mes'           => ['required', 'regex:/^\d{4}-\d{2}$/'],
+            'cuartos_noche' => 'required|integer|min:1|max:1000000',
+        ]);
+        $hotel = $this->hotelActivo();
+        \App\Models\OcupacionMensual::deHotel($hotel)->updateOrCreate(
+            ['hotel_code' => $hotel, 'mes' => $data['mes']],
+            ['cuartos_noche' => $data['cuartos_noche'], 'capturado_por' => auth()->id()]
+        );
+        \App\Models\AuditLog::registrar('ocupacion.capturada', "Capturó {$data['cuartos_noche']} cuartos-noche para {$data['mes']} ({$hotel}).");
+
+        return redirect()->route('direccion.index', ['mes' => $data['mes']])->with('success', 'Ocupación guardada.');
+    }
 }

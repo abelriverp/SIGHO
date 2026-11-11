@@ -9,6 +9,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('monitoreo.index') }}" class="border border-slate-300 text-slate-700 font-bold py-2 px-4 rounded text-sm">📡 Monitoreo</a>
+            <a href="{{ route('network.topologia') }}" class="border border-slate-300 text-slate-700 font-bold py-2 px-4 rounded text-sm">Topología</a>
             <a href="{{ route('segmentos.index') }}" class="border border-slate-300 text-slate-700 font-bold py-2 px-4 rounded text-sm">Segmentos / VLANs</a>
             <a href="{{ route('network.create') }}" class="bg-[#041b32] text-white font-bold py-2 px-4 rounded shadow text-sm">+ Nuevo equipo de red</a>
         </div>

@@ -151,6 +151,7 @@
                                 <a href="{{ route('network.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case">Ver Equipos</a>
                                 <a href="{{ route('network.create') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">+ Nuevo Equipo</a>
                                 <a href="{{ route('monitoreo.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">📡 Monitoreo</a>
+                                <a href="{{ route('network.topologia') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Topología</a>
                                 <a href="{{ route('segmentos.index') }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Segmentos / VLANs</a>
                                 @if($user->tieneModulo('seguimiento_equipos_ti'))
                                     <a href="{{ route('contratos.index', ['tipo' => 'enlace']) }}" class="block px-4 py-3 hover:bg-blue-50 hover:text-[#041b32] transition normal-case border-t border-gray-100">Enlaces de internet</a>
@@ -398,6 +399,7 @@
                     </a>
                     <a href="{{ route('network.create') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">+ Nuevo Equipo</a>
                     <a href="{{ route('monitoreo.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">📡 Monitoreo</a>
+                    <a href="{{ route('network.topologia') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Topología</a>
                     <a href="{{ route('segmentos.index') }}" @click="mobileMenuOpen = false" class="block px-4 py-2 text-[12px] text-slate-300 hover:text-white normal-case">Segmentos / VLANs</a>
                 </div>
                 @endif

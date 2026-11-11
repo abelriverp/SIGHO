@@ -52,7 +52,7 @@
 
             {{-- Fila 2 (Fase 2): Ubicación y equipo afectado, ligados al catálogo de Activos --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6"
-                 x-data="{ ubicacion: @js((string) old('ubicacion_id', '')), activo: @js((string) old('asset_id', '')), activos: @js($activosTicket->map(fn ($a) => ['id' => (string) $a->id, 'texto' => $a->nomenclatura . ' · ' . ($a->tipo_equipo ?: $a->nombre), 'ubicacion' => (string) $a->ubicacion_id])->values()) }">
+                 x-data="{ ubicacion: @js((string) old('ubicacion_id', request('ubicacion_id', ''))), activo: @js((string) old('asset_id', request('asset_id', ''))), activos: @js($activosTicket->map(fn ($a) => ['id' => (string) $a->id, 'texto' => $a->nomenclatura . ' · ' . ($a->tipo_equipo ?: $a->nombre), 'ubicacion' => (string) $a->ubicacion_id])->values()) }">
                 <div>
                     <label class="block text-sm font-bold text-slate-700 mb-1">Habitación o área</label>
                     <select name="ubicacion_id" x-model="ubicacion" @change="if (activo && !activos.find(a => a.id === activo && (!ubicacion || a.ubicacion === ubicacion))) activo = ''"

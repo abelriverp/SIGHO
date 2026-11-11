@@ -44,7 +44,7 @@
             @empty
                 <p class="text-sm text-slate-400">Sin tickets resueltos.</p>
             @endforelse
-            <p class="text-xs text-slate-400 mt-2">Reabiertos: {{ $fmt($c['reaperturaPct'] ?? null, '%') }} · Encuestas: {{ $c['csatRespuestas'] ?? 0 }}</p>
+            <p class="text-xs text-slate-400 mt-2">Primera respuesta: <strong>{{ \App\Services\DashboardMetricsService::duracion($c['primeraRespuestaMin'] ?? null) }}</strong> promedio · Reabiertos: {{ $fmt($c['reaperturaPct'] ?? null, '%') }} · Encuestas: {{ $c['csatRespuestas'] ?? 0 }}</p>
         </div>
         <div class="{{ $tarjeta }}">
             <p class="font-bold text-slate-700 mb-2">Equipos con más fallas</p>
@@ -93,6 +93,15 @@
         <div class="{{ $tarjeta }}">
             <p class="font-bold text-slate-700 mb-2">Costos y vencimientos</p>
             <p class="text-sm">Gasto anual en contratos (MXN): <strong>${{ number_format($t['gastoAnual'], 0) }}</strong></p>
+            <p class="text-sm mt-1">Costo de TI del mes: <strong>${{ number_format($t['costoTiMes'], 0) }}</strong></p>
+            <p class="text-sm mt-1">Por cuarto-noche ocupado: <strong class="text-[#041b32]">{{ $t['costoPorCuartoNoche'] !== null ? '$'.number_format($t['costoPorCuartoNoche'], 2) : '—' }}</strong></p>
+            <form method="POST" action="{{ route('direccion.ocupacion') }}" class="flex gap-2 items-center mt-2">
+                @csrf
+                <input type="hidden" name="mes" value="{{ $mes }}">
+                <input type="number" name="cuartos_noche" min="1" required value="{{ $t['cuartosNoche'] }}" placeholder="Cuartos-noche del mes" class="flex-1 min-w-0 border border-slate-300 rounded text-xs p-1.5">
+                <button class="bg-[#041b32] text-white text-xs font-bold px-3 py-1.5 rounded">Guardar</button>
+            </form>
+            <p class="text-[10px] text-slate-400 mt-1">Cuartos-noche ocupados del mes, del reporte de ocupación de Opera. Costo = contratos (llevados a mes) + licencias repartidas en su vigencia.</p>
             <p class="text-xs font-bold text-slate-500 mt-3 mb-1">Vencen en 90 días</p>
             @forelse($t['vencimientos'] as $v)
                 <div class="flex justify-between text-xs py-0.5"><span class="truncate">{{ $v['tipo'] }}: {{ $v['nombre'] }}</span><span class="{{ $v['dias'] <= 15 ? 'text-red-600 font-bold' : '' }}">{{ $v['dias'] }} d</span></div>

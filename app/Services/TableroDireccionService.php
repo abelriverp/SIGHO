@@ -54,9 +54,17 @@ class TableroDireccionService
         $minPeriodo = max(1, $desde->diffInMinutes($hasta));
         $disponibilidad = $monitoreados ? round(100 - ($minCaido / ($minPeriodo * $monitoreados)) * 100, 2) : null;
 
-        $gastoAnual = $h(Contrato::class)->where('activo', true)->where('moneda', 'MXN')->get()->sum(fn ($c) => match ($c->periodicidad_pago) {
-            'mensual' => $c->costo * 12, 'trimestral' => $c->costo * 4, default => (float) $c->costo,
+        // Fase 6: costo mensual de TI = contratos activos en MXN llevados a mes
+        // (un pago único no se repite) + licencias vigentes repartidas en su vigencia.
+        $costoContratosMes = (float) $h(Contrato::class)->where('activo', true)->where('moneda', 'MXN')->get()->sum(fn ($c) => match ($c->periodicidad_pago) {
+            'mensual' => (float) $c->costo, 'trimestral' => $c->costo / 3, 'anual' => $c->costo / 12, default => 0,
         });
+        $costoLicenciasMes = (float) $h(\App\Models\Licencia::class)->whereNotNull('costo')->whereNotNull('fecha_compra')
+            ->whereNotNull('fecha_vencimiento')->where('fecha_vencimiento', '>=', $desde)->get()
+            ->sum(fn ($l) => $l->costo / max(1, (int) round($l->fecha_compra->diffInMonths($l->fecha_vencimiento))));
+        $gastoAnual = $costoContratosMes * 12;
+        $costoTiMes = round($costoContratosMes + $costoLicenciasMes, 2);
+        $cuartosNoche = $h(\App\Models\OcupacionMensual::class)->where('mes', $desde->format('Y-m'))->value('cuartos_noche');
 
         return [
             'hotel'            => $hotel,
@@ -77,6 +85,9 @@ class TableroDireccionService
             'disponibilidad'   => $disponibilidad,
             'caidosAhora'      => $h(Asset::class)->where('estado_monitoreo', 'caido')->where('monitorear', true)->pluck('nomenclatura'),
             'gastoAnual'       => $gastoAnual,
+            'costoTiMes'       => $costoTiMes,
+            'cuartosNoche'     => $cuartosNoche,
+            'costoPorCuartoNoche' => $cuartosNoche ? round($costoTiMes / $cuartosNoche, 2) : null,
             'vencimientos'     => $this->vencimientos->proximos($hotel, 90, false)->take(10),
             'problemasAbiertos'=> $h(Problema::class)->whereNotIn('estado', ['resuelto', 'cerrado'])->count(),
             'problemasResueltos'=> $h(Problema::class)->whereBetween('resuelto_at', [$desde, $hasta])->count(),

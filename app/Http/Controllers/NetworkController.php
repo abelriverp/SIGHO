@@ -29,10 +29,39 @@ class NetworkController extends Controller
             'ubicaciones' => Ubicacion::where('activa', true)->orderBy('tipo')->orderBy('codigo')->get(['id', 'tipo', 'codigo', 'nombre']),
             'activosRed'  => Asset::vigentes()->where('categoria', 'Red')->orderBy('nomenclatura')->get(['id', 'nomenclatura', 'nombre', 'tipo_equipo', 'ip_address']),
             'tipos'       => self::TIPOS,
+            'equiposRed'  => NetworkDevice::orderBy('nombre')->get(['id', 'nombre', 'tipo']),
         ];
     }
 
-    private function validar(Request $request, bool $creando): array
+    /** Fase 6: árbol MDF → IDF → switches de acceso, desde el campo uplink. */
+    public function topologia()
+    {
+        $equipos = NetworkDevice::with(['ubicacionCatalogo', 'asset:id,nomenclatura,estado_monitoreo,monitorear,ip_address'])
+            ->withCount(['ports', 'ports as ocupados_count' => fn ($q) => $q->where('status', 'Ocupado')])
+            ->orderBy('nombre')->get();
+        $porPadre = $equipos->groupBy(fn ($d) => $d->uplink_id ?: 0);
+        $ids = $equipos->pluck('id')->all();
+        // Raíces: sin uplink, o con uplink que no existe en esta propiedad.
+        $raices = $equipos->filter(fn ($d) => ! $d->uplink_id || ! in_array($d->uplink_id, $ids, true))->values();
+
+        return view('network.topologia', compact('raices', 'porPadre', 'equipos'));
+    }
+
+    /** Fase 6: vista de rack de un site/IDF: equipos de red ordenados por U y demás activos del cuarto. */
+    public function rack(Ubicacion $ubicacion)
+    {
+        $equipos = NetworkDevice::with(['asset:id,nomenclatura,estado_monitoreo,monitorear', 'uplink:id,nombre'])
+            ->withCount(['ports as ocupados_count' => fn ($q) => $q->where('status', 'Ocupado')])
+            ->where('ubicacion_id', $ubicacion->id)->get()
+            ->sortByDesc(fn ($d) => (int) preg_replace('/\D/', '', (string) $d->posicion_rack))->values();
+        $otros = Asset::vigentes()->where('ubicacion_id', $ubicacion->id)
+            ->whereNotIn('id', $equipos->pluck('asset_id')->filter())->orderBy('categoria')->orderBy('nomenclatura')
+            ->get(['id', 'nomenclatura', 'nombre', 'tipo_equipo', 'categoria', 'ip_address', 'estado_monitoreo', 'monitorear']);
+
+        return view('network.rack', compact('ubicacion', 'equipos', 'otros'));
+    }
+
+    private function validar(Request $request, bool $creando, ?NetworkDevice $device = null): array
     {
         $reglas = [
             'nombre'       => 'required|string|max:255',
@@ -41,6 +70,9 @@ class NetworkController extends Controller
             'ubicacion_id' => 'nullable|integer',
             'asset_id'     => 'nullable|integer',
             'ip_gestion'   => 'nullable|ip',
+            'posicion_rack'=> 'nullable|string|max:20',
+            'uplink_id'    => 'nullable|integer',
+            'uplink_puerto'=> 'nullable|string|max:50',
         ];
         if ($creando) {
             $reglas['total_ports'] = 'required|integer|min:4|max:52';
@@ -53,6 +85,13 @@ class NetworkController extends Controller
         }
         if (! empty($data['asset_id']) && ! Asset::whereKey($data['asset_id'])->exists()) {
             $errores['asset_id'] = 'Activo no válido.';
+        }
+        // Fase 6: el uplink debe existir y no puede ser el mismo equipo ni uno que cuelga de él.
+        if (! empty($data['uplink_id'])) {
+            $prohibidos = $device ? $device->idsRama() : [];
+            if (! NetworkDevice::whereKey($data['uplink_id'])->exists() || in_array((int) $data['uplink_id'], $prohibidos, true)) {
+                $errores['uplink_id'] = 'Ese equipo no puede ser el uplink (no existe o cuelga de este mismo equipo).';
+            }
         }
         if ($errores) {
             throw ValidationException::withMessages($errores);
@@ -116,7 +155,7 @@ class NetworkController extends Controller
     public function update(Request $request, $id)
     {
         $device = NetworkDevice::findOrFail($id);
-        $device->update($this->validar($request, false));
+        $device->update($this->validar($request, false, $device));
 
         return redirect()->route('network.show', $device->id)->with('success', 'Dispositivo actualizado.');
     }

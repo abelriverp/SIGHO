@@ -91,9 +91,17 @@
                     default     => 'bg-slate-100 text-slate-700',
                 };
             @endphp
-            <span class="px-3 py-1 rounded-full text-xs font-bold {{ $statusColor }}">
-                {{ strtoupper($ticket->status) }}
-            </span>
+            <div class="flex flex-wrap gap-2 justify-end">
+                @if($ticket->ticket_padre_id)
+                    <a href="{{ route('tickets.show', $ticket->ticket_padre_id) }}" class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700">Agrupado bajo #{{ $ticket->ticket_padre_id }}</a>
+                @endif
+                @if($ticket->proveedor_id && $ticket->abierto())
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">En espera de proveedor</span>
+                @endif
+                <span class="px-3 py-1 rounded-full text-xs font-bold {{ $statusColor }}">
+                    {{ strtoupper($ticket->status) }}
+                </span>
+            </div>
         </div>
 
         {{-- ============================================ --}}
@@ -434,6 +442,61 @@
                         </form>
                     @endif
                     <a href="{{ route('problemas.create', ['ticket' => $ticket->id]) }}" class="inline-block mt-2 text-xs font-bold text-[#041b32] hover:underline">+ Abrir problema con este ticket</a>
+                </div>
+
+                {{-- Fase 6: agrupar con otros reportes del mismo incidente --}}
+                @php $hijosTicket = $ticket->hijos()->get(['id', 'status', 'user_id']); @endphp
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">🔗 Agrupación</h4>
+                    @if($ticket->ticket_padre_id)
+                        <p class="text-xs text-slate-700">Agrupado bajo <a href="{{ route('tickets.show', $ticket->ticket_padre_id) }}" class="font-bold text-[#041b32] hover:underline">#{{ $ticket->ticket_padre_id }}</a>: se resuelve junto con él.</p>
+                        <form action="{{ route('tickets.desagrupar', $ticket->id) }}" method="POST" class="mt-1">@csrf @method('DELETE')<button class="text-xs text-red-600 hover:underline">Separar</button></form>
+                    @elseif($hijosTicket->isNotEmpty())
+                        <p class="text-xs text-slate-700 mb-1">Agrupa {{ $hijosTicket->count() }} reporte(s); al resolver este se resuelven todos:</p>
+                        @foreach($hijosTicket as $h)
+                            <a href="{{ route('tickets.show', $h->id) }}" class="inline-block text-xs bg-slate-100 rounded px-2 py-0.5 mr-1 mb-1 hover:bg-slate-200">#{{ $h->id }} · {{ $h->status }}</a>
+                        @endforeach
+                    @elseif($ticket->abierto())
+                        <form action="{{ route('tickets.agrupar', $ticket->id) }}" method="POST" class="flex gap-2">
+                            @csrf
+                            <input type="number" name="ticket_padre_id" min="1" required placeholder="# ticket principal" class="flex-1 min-w-0 border border-slate-300 rounded text-xs p-1.5">
+                            <button type="submit" class="bg-[#041b32] text-white text-xs font-bold px-3 py-1.5 rounded">Agrupar</button>
+                        </form>
+                        <p class="text-[10px] text-slate-400 mt-1">Para reportes repetidos de una misma falla (ej. caída de internet).</p>
+                    @else
+                        <p class="text-xs text-slate-400">Sin agrupación.</p>
+                    @endif
+                </div>
+
+                {{-- Fase 6: escalado a proveedor externo --}}
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">🏢 Proveedor</h4>
+                    @if($ticket->proveedor)
+                        <p class="text-xs text-slate-700">Escalado a <strong>{{ $ticket->proveedor->nombre }}</strong> el {{ $ticket->escalado_proveedor_at?->format('d/m/Y H:i') }}{{ $ticket->folio_proveedor ? ' · folio '.$ticket->folio_proveedor : '' }}</p>
+                        @if($ticket->proveedor->soporte || $ticket->proveedor->telefono || $ticket->proveedor->email)
+                            <p class="text-[11px] text-slate-500 mt-0.5">Soporte: {{ collect([$ticket->proveedor->soporte, $ticket->proveedor->telefono, $ticket->proveedor->email])->filter()->implode(' · ') }}</p>
+                        @endif
+                        <form action="{{ route('tickets.escalar.quitar', $ticket->id) }}" method="POST" class="mt-1">@csrf @method('DELETE')<button class="text-xs text-red-600 hover:underline">Quitar escalamiento</button></form>
+                    @elseif($ticket->abierto())
+                        @php $proveedoresTicket = \App\Models\Proveedor::where('activo', true)->orderBy('nombre')->get(['id', 'nombre']); @endphp
+                        @if($proveedoresTicket->isNotEmpty())
+                            <form action="{{ route('tickets.escalar', $ticket->id) }}" method="POST" class="space-y-1.5">
+                                @csrf
+                                <select name="proveedor_id" required class="w-full border border-slate-300 rounded text-xs p-1.5">
+                                    <option value="">Escalar a proveedor…</option>
+                                    @foreach($proveedoresTicket as $pv)<option value="{{ $pv->id }}">{{ $pv->nombre }}</option>@endforeach
+                                </select>
+                                <div class="flex gap-2">
+                                    <input name="folio_proveedor" maxlength="100" placeholder="Folio del proveedor (opcional)" class="flex-1 min-w-0 border border-slate-300 rounded text-xs p-1.5">
+                                    <button type="submit" class="bg-[#041b32] text-white text-xs font-bold px-3 py-1.5 rounded">Escalar</button>
+                                </div>
+                            </form>
+                        @else
+                            <p class="text-xs text-slate-400">Da de alta proveedores en Activos → Proveedores.</p>
+                        @endif
+                    @else
+                        <p class="text-xs text-slate-400">Sin escalar.</p>
+                    @endif
                 </div>
             </div>
         @endif

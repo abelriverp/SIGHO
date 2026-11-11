@@ -356,3 +356,21 @@ Auditoría propia. Hallazgos y lo que se hizo:
 - phpMyAdmin ya estaba restringido a `Require local`. `APP_DEBUG=false` y `APP_ENV=production` ya estaban bien.
 - Pendiente de infraestructura: HTTPS (requiere certificado interno o nombre DNS), contraseña para `root` de MySQL (rompe la config por defecto de phpMyAdmin) y activar Dependabot alerts en GitHub.
 - Tests: `tests/Feature/SeguridadTest.php` (8 casos). Suite: 194 pruebas.
+
+## 23. Fase 6: lo que quedaba del análisis (2026-11-11)
+
+- **Primera respuesta** (`tickets.primera_respuesta_at`): la marca `TicketNota::created` con la primera nota manual de alguien de soporte (técnico, admin o gerente) que no sea quien reportó. Si se resuelve antes, la resolución cuenta (`Ticket::saving`). La migración rellena los tickets existentes.
+  - KPI en `calidad`: `primeraRespuestaMin` (promedio) y `primeraRespuesta30Pct` (% en 30 min o menos). Se muestra en Reportes de tickets, el tablero de dirección y su PDF, y la API (`kpis.tickets.primera_respuesta_min`). `DashboardMetricsService::duracion()` formatea los minutos.
+- **Tickets padre/hijo** (`tickets.ticket_padre_id`, `TicketGestionController`): agrupa reportes del mismo incidente.
+  - Solo un nivel: no se agrupa bajo un hijo ni se agrupa un ticket que ya tiene hijos. El padre debe estar abierto. Solo técnicos y admins agrupan.
+  - Al resolver el padre (`TicketController::resolve` → `resolverHijos`), cada hijo abierto queda Resuelto con la misma solución, su propio token, nota y aviso a quien lo reportó.
+  - En el listado se marca `↳ #padre`, y en el detalle aparece el panel 🔗 Agrupación.
+- **Escalar a proveedor** (`tickets.proveedor_id`, `escalado_proveedor_at`, `folio_proveedor`): panel 🏢 Proveedor en el ticket, con el contacto de soporte del proveedor. Muestra la etiqueta "En espera de proveedor", y Proveedores lleva el conteo de tickets escalados abiertos.
+- **Etiquetas QR** (`assets.etiquetas`, `assets/etiquetas.blade.php`, qrcodejs por CDN como los puntos QR): hojas de etiquetas de 6.4 × 3.2 cm para la selección del listado, un solo activo o toda una ubicación. El QR abre la ficha del activo (pide login). La ficha tiene "⚠ Reportar falla", que abre `tickets.create?asset_id=&ubicacion_id=` ya prellenado.
+- **Topología y rack**: `network_devices.posicion_rack`, `uplink_id` y `uplink_puerto`. `/red/topologia` dibuja el árbol desde los equipos sin uplink, con colores del monitoreo. `/red/rack/{ubicacion}` (botón en ubicaciones de tipo Site) ordena los equipos por U de arriba hacia abajo y lista los demás activos del cuarto. Al guardar se rechaza un uplink que cree ciclo (`NetworkDevice::idsRama()`).
+- **Costo de TI por cuarto-noche ocupado**: `ocupacion_mensual` (cuartos-noche capturados a mano en el tablero de dirección, del reporte de ocupación de Opera).
+  - Costo de TI del mes = contratos activos en MXN llevados a mes (mensual, trimestral/3, anual/12; el pago único ya no cuenta) + licencias vigentes con costo, repartidas en los meses entre compra y vencimiento.
+  - **Cambio**: `gastoAnual` ahora es el costo mensual de contratos × 12. Antes sumaba los pagos únicos como si fueran anuales.
+  - Aparece en el tablero, el PDF mensual y la API (`contratos.costo_ti_mes_mxn`, `costo_por_cuarto_noche`).
+- No se hizo, a propósito: separar `TicketController` (las acciones nuevas ya van en `TicketGestionController`), generar el menú desde un solo arreglo (sigue duplicado, se agregaron enlaces en ambos), métricas agregadas en SQL (con el volumen actual no hace falta) y apuntar Apache solo a `public/` (ya está bloqueado por `.htaccess`).
+- Tests: `tests/Feature/PendientesFase6Test.php` (8 casos). Suite: 202 pruebas.

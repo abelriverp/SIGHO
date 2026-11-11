@@ -42,6 +42,14 @@
             <select name="asset_id" class="{{ $in }}"><option value="">— Sin ligar —</option>@foreach($activosRed as $a)<option value="{{ $a->id }}" @selected((string) old('asset_id', $device?->asset_id) === (string) $a->id)>{{ $a->nomenclatura }} · {{ $a->tipo_equipo ?: $a->nombre }} {{ $a->ip_address }}</option>@endforeach</select>
             <p class="text-xs text-slate-500 mt-1">Así el switch tiene garantía, contrato, historial de tickets y monitoreo. Solo aparecen activos de categoría Red.</p>
         </div>
+        {{-- Fase 6: rack y topología --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div><label class="{{ $lbl }}">Posición en rack</label><input name="posicion_rack" value="{{ old('posicion_rack', $device?->posicion_rack) }}" maxlength="20" class="{{ $in }}" placeholder="U12"></div>
+            <div><label class="{{ $lbl }}">Cuelga de (uplink)</label>
+                <select name="uplink_id" class="{{ $in }}"><option value="">— Es el equipo principal —</option>@foreach($equiposRed as $e)@continue($device && $e->id === $device->id)<option value="{{ $e->id }}" @selected((string) old('uplink_id', $device?->uplink_id) === (string) $e->id)>{{ $e->nombre }} ({{ $e->tipo }})</option>@endforeach</select>
+            </div>
+            <div><label class="{{ $lbl }}">Puerto del uplink</label><input name="uplink_puerto" value="{{ old('uplink_puerto', $device?->uplink_puerto) }}" maxlength="50" class="{{ $in }}" placeholder="Ej: puerto 24 / SFP 1"></div>
+        </div>
         <div class="flex justify-end border-t border-slate-200 pt-5"><button class="bg-[#041b32] text-white font-bold py-2.5 px-8 rounded-lg shadow-md">Guardar</button></div>
     </form>
 </div>

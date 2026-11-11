@@ -460,7 +460,10 @@
             <tbody class="divide-y divide-slate-100">
                 @forelse($ticketsResueltos->merge($misReportesResueltos)->unique('id')->sortByDesc('updated_at') as $ticket)
                     <tr class="hover:bg-slate-50 transition">
-                        <td class="py-4 px-6 font-mono text-slate-400">#{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}</td>
+                        <td class="py-4 px-6 font-mono text-slate-400">#{{ str_pad($ticket->id, 5, '0', STR_PAD_LEFT) }}
+                            @if($ticket->ticket_padre_id)<span class="block text-[10px] text-purple-600 font-sans font-bold" title="Agrupado">↳ #{{ $ticket->ticket_padre_id }}</span>@endif
+                            @if($ticket->proveedor_id && in_array($ticket->status, ['Abierto', 'Reabierto']))<span class="block text-[10px] text-amber-700 font-sans font-bold">Proveedor</span>@endif
+                        </td>
                         <td class="py-4 px-6">
                             <div class="font-bold text-slate-800">{{ $ticket->area }}</div>
                             <div class="flex items-center gap-2 mt-1">

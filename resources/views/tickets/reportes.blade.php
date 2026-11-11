@@ -153,7 +153,12 @@
 
     {{-- Fase 2 (nov 2026): calidad del servicio y dónde se concentran las fallas --}}
     @php $cal = $metricas['calidad']; @endphp
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase">Primera respuesta</p>
+            <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $cal['primeraRespuestaMin'] !== null ? \App\Services\DashboardMetricsService::duracion($cal['primeraRespuestaMin']) : '—' }}</p>
+            <p class="text-xs text-gray-400">Promedio · {{ $cal['primeraRespuesta30Pct'] !== null ? $cal['primeraRespuesta30Pct'].'% en ≤ 30 min' : 'sin datos' }} · meta &lt; 30 min</p>
+        </div>
         <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
             <p class="text-xs font-bold text-gray-400 uppercase">Satisfacción (CSAT)</p>
             <p class="text-2xl font-bold text-[#041b32] mt-1">{{ $cal['csatPromedio'] !== null ? $cal['csatPromedio'].' / 5' : '—' }}</p>

@@ -704,8 +704,40 @@ class TicketController extends Controller
             $ticket->fresh()->only(['status', 'notas_admin', 'fecha_resolucion', 'token_resolucion', 'resolved_by', 'operador_id'])
         );
 
+        // Fase 6: los tickets agrupados bajo este se resuelven con la misma solución.
+        $hijosResueltos = $this->resolverHijos($ticket, $user, $request->notas_admin, $request->ip());
+
         return redirect()->route('tickets.show', $ticket->id)
-            ->with('success', "Ticket marcado como resuelto. Token: {$token}");
+            ->with('success', "Ticket marcado como resuelto. Token: {$token}" . ($hijosResueltos ? " · también se resolvieron {$hijosResueltos} ticket(s) agrupado(s)." : ''));
+    }
+
+    /** Fase 6: resuelve los hijos abiertos de un ticket con la solución del padre. */
+    private function resolverHijos(Ticket $padre, User $user, string $solucion, ?string $ip): int
+    {
+        $n = 0;
+        foreach ($padre->hijos()->whereIn('status', ['Abierto', 'Reabierto'])->get() as $hijo) {
+            $token = $this->generarToken($hijo->id, 'R', $hijo->hotel_code);
+            $hijo->update([
+                'status'           => 'Resuelto',
+                'notas_admin'      => "Resuelto junto con el ticket #{$padre->id}: {$solucion}",
+                'fecha_resolucion' => now(),
+                'token_resolucion' => $token,
+                'ip_resolucion'    => $ip,
+                'resolved_by'      => $user->id,
+            ]);
+            TicketNota::create([
+                'ticket_id' => $hijo->id, 'user_id' => $user->id, 'tipo' => 'publica', 'es_automatica' => true,
+                'nota'      => "Resuelto junto con el ticket #{$padre->id}. Solución: {$solucion} | Token de resolución: {$token}",
+            ]);
+            try {
+                Notification::send($hijo->user, new TicketResueltoNotification($hijo, $token));
+            } catch (Throwable $e) {
+                Log::warning('No se pudo avisar la resolución de un ticket agrupado', ['ticket' => $hijo->id, 'error' => $e->getMessage()]);
+            }
+            AuditLog::registrar('ticket.resuelto', "Resolvió el ticket #{$hijo->id} junto con el #{$padre->id}. Token: {$token}.", $hijo);
+            $n++;
+        }
+        return $n;
     }
 
     // ==========================================

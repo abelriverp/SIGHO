@@ -76,6 +76,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/activos/plantilla', [AssetController::class, 'plantillaCsv'])->name('assets.plantilla');
         Route::post('/activos/importar', [AssetController::class, 'importCsv'])->name('assets.import');
         Route::post('/activos/mover-lote', [AssetController::class, 'moverLote'])->name('assets.moverLote');
+        Route::get('/activos/etiquetas', [AssetController::class, 'etiquetas'])->name('assets.etiquetas'); // Fase 6
         Route::resource('assets', AssetController::class)->except(['index', 'create']);
 
         Route::get('assets/{asset}/revisions/create', [RevisionController::class, 'create'])->name('revisions.create');
@@ -149,6 +150,9 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware(['modulo:red_infraestructura'])->group(function () {
+        // Fase 6: topología y vista de rack
+        Route::get('/red/topologia', [NetworkController::class, 'topologia'])->name('network.topologia');
+        Route::get('/red/rack/{ubicacion}', [NetworkController::class, 'rack'])->name('network.rack');
         Route::resource('network', NetworkController::class);
         Route::post('/network/port/{id}', [NetworkController::class, 'updatePort'])->name('network.port.update');
 
@@ -237,6 +241,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['supervisor'])->group(function () {
         Route::get('/direccion', [DireccionController::class, 'index'])->name('direccion.index');
         Route::get('/direccion/pdf', [DireccionController::class, 'pdf'])->name('direccion.pdf');
+        Route::post('/direccion/ocupacion', [DireccionController::class, 'ocupacion'])->name('direccion.ocupacion'); // Fase 6
     });
 
     // Fase 2: base de conocimiento (lectura para todos con Tickets).
@@ -273,6 +278,11 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{id}/deshacer-resolucion', [TicketController::class, 'deshacerResolucion'])->name('deshacer-resolucion');
         Route::post('/{id}/notas', [TicketController::class, 'agregarNota'])->name('notas.store');
         Route::post('/{id}/material', [TicketController::class, 'registrarMaterial'])->name('material.store');
+        // Fase 6: agrupar (padre/hijo) y escalar a proveedor
+        Route::post('/{id}/agrupar', [\App\Http\Controllers\TicketGestionController::class, 'agrupar'])->name('agrupar');
+        Route::delete('/{id}/agrupar', [\App\Http\Controllers\TicketGestionController::class, 'desagrupar'])->name('desagrupar');
+        Route::post('/{id}/escalar', [\App\Http\Controllers\TicketGestionController::class, 'escalar'])->name('escalar');
+        Route::delete('/{id}/escalar', [\App\Http\Controllers\TicketGestionController::class, 'quitarEscalamiento'])->name('escalar.quitar');
         Route::patch('/{ticket}/notas/{nota}/edit', [TicketController::class, 'editarNota'])->name('notas.edit');
         Route::delete('/{id}', [TicketController::class, 'destroy'])->name('destroy');
     });

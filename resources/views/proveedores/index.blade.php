@@ -37,7 +37,7 @@
             <details class="bg-white rounded-lg shadow-sm border border-slate-200 {{ $p->activo ? '' : 'opacity-60' }}">
                 <summary class="p-4 cursor-pointer flex flex-wrap justify-between gap-3">
                     <span><span class="font-bold text-slate-800">{{ $p->nombre }}</span> <span class="text-xs text-slate-500">{{ $p->contacto }} {{ $p->telefono }}</span></span>
-                    <span class="text-xs text-slate-500">{{ $p->contratos_count }} contrato(s) · {{ $p->licencias_count }} licencia(s) · {{ $p->activos_count }} activo(s){{ $p->activo ? '' : ' · inactivo' }}</span>
+                    <span class="text-xs text-slate-500">{{ $p->contratos_count }} contrato(s) · {{ $p->licencias_count }} licencia(s) · {{ $p->activos_count }} activo(s){{ $p->tickets_abiertos_count ? ' · '.$p->tickets_abiertos_count.' ticket(s) escalado(s) abierto(s)' : '' }}{{ $p->activo ? '' : ' · inactivo' }}</span>
                 </summary>
                 <div class="px-4 pb-4">
                     @if($p->soporte)<p class="text-sm mb-3"><span class="font-bold text-slate-600">Soporte:</span> {{ $p->soporte }}</p>@endif

@@ -30,7 +30,7 @@ class ProveedorController extends Controller
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q'));
-        $proveedores = Proveedor::withCount(['contratos', 'licencias', 'activos'])
+        $proveedores = Proveedor::withCount(['contratos', 'licencias', 'activos', 'tickets as tickets_abiertos_count' => fn ($t) => $t->whereIn('status', ['Abierto', 'Reabierto'])])
             ->when($q !== '', fn ($w) => $w->where('nombre', 'like', "%{$q}%"))
             ->orderByDesc('activo')->orderBy('nombre')->get();
 
